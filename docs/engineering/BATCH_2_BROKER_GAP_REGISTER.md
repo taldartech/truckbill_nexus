@@ -21,15 +21,15 @@
 
 ## Do not implement (PO-LGC)
 
-| ID         | Topic                                          |
-| ---------- | ---------------------------------------------- |
-| PO-LGC-001 | Custom Invoice product policy                  |
-| PO-LGC-002 | Broker invoice edit                            |
-| PO-LGC-003 | Voucher edit/delete                            |
-| PO-LGC-004 | Platform transporter master registry           |
-| PO-LGC-005 | Masters bulk CSV                               |
-| PO-LGC-006 | Hire settlement statement PDF                  |
-| PO-LGC-007 | Full Lorry Hire PATCH / unrestricted hire edit |
+| ID         | Topic                                                                 |
+| ---------- | --------------------------------------------------------------------- |
+| PO-LGC-001 | Custom Invoice product policy                                         |
+| PO-LGC-002 | Broker invoice edit                                                   |
+| PO-LGC-003 | Voucher edit/delete                                                   |
+| PO-LGC-004 | Platform transporter master registry                                  |
+| PO-LGC-005 | Masters bulk CSV                                                      |
+| PO-LGC-006 | Hire settlement statement PDF                                         |
+| PO-LGC-007 | Unrestricted hire edit (guarded edit Accepted 28 Nov 2026, Rules §37) |
 
 ## Confirmed gaps — final status
 

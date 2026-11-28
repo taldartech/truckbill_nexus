@@ -253,6 +253,7 @@ export function FormConfirmationDialog({
     fields = [],
     sections,
     changes = [],
+    supplementarySections = [],
     remark,
     consequences = [],
     reason,
@@ -329,7 +330,7 @@ export function FormConfirmationDialog({
             <DialogContent
                 className={cn(
                     'flex max-h-[88vh] w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:w-full',
-                    wide ? 'max-w-[960px]' : 'max-w-xl',
+                    wide ? 'sm:max-w-[960px]' : 'sm:max-w-xl',
                 )}
             >
                 <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
@@ -365,6 +366,13 @@ export function FormConfirmationDialog({
                         <p className="text-sm text-muted-foreground">
                             No field changes detected.
                         </p>
+                    ) : null}
+
+                    {showChanges && supplementarySections.length > 0 ? (
+                        <ReviewSections
+                            sections={supplementarySections}
+                            wide={wide}
+                        />
                     ) : null}
 
                     {mode === 'edit' && remark !== undefined ? (

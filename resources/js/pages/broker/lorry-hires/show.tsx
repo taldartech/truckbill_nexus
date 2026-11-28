@@ -10,7 +10,13 @@ import {
     FbInfoItem,
     FbRouteCard,
 } from '@/components/fb-detail';
-import { ArrowLeft, ExternalLink, FileText, Wallet } from 'lucide-react';
+import {
+    ArrowLeft,
+    ExternalLink,
+    FileText,
+    Pencil,
+    Wallet,
+} from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type {
@@ -31,8 +37,23 @@ type GoodsLine = {
     rate_type_label?: string | null;
     rate: string | null;
     freight_amount: string | null;
+    calculated_freight_amount?: string | null;
+    custom_amount?: string | null;
     loading_weight: string | null;
     is_fixed_amount: boolean;
+};
+
+type RevisionRow = {
+    id: string;
+    created_at: string | null;
+    created_by: string | null;
+    remark: string;
+    freight_before: string | null;
+    freight_after: string | null;
+    tds_before: string | null;
+    tds_after: string | null;
+    net_payable_before: string | null;
+    net_payable_after: string | null;
 };
 
 type AdjustmentRow = {
@@ -106,6 +127,7 @@ type Props = {
         }>;
     } | null;
     adjustments: AdjustmentRow[];
+    revisions?: RevisionRow[];
     adjustmentTypeOptions: Array<{ value: string; label: string }>;
     delivery: {
         status: string | null;
@@ -121,6 +143,7 @@ type Props = {
         can_view_adjustment?: boolean;
         can_manage_delivery?: boolean;
         can_pay?: boolean;
+        can_edit?: boolean;
     };
     urls: {
         index: string;
@@ -130,6 +153,7 @@ type Props = {
         payment_context: string | null;
         voucher_store: string | null;
         cancel: string | null;
+        edit?: string | null;
     };
 };
 
@@ -137,6 +161,7 @@ export default function LorryHireShow({
     lorryHire,
     cancelPreview,
     adjustments,
+    revisions = [],
     adjustmentTypeOptions,
     delivery,
     permissions,
@@ -394,6 +419,15 @@ export default function LorryHireShow({
                                             variant="info"
                                             size="sm"
                                         />
+                                        {permissions.can_edit && urls.edit ? (
+                                            <AppIconAction
+                                                icon={Pencil}
+                                                label="Edit Lorry Hire"
+                                                href={urls.edit}
+                                                variant="outline"
+                                                size="sm"
+                                            />
+                                        ) : null}
                                         {permissions.can_pay ? (
                                             <AppIconAction
                                                 icon={Wallet}
@@ -503,10 +537,19 @@ export default function LorryHireShow({
                                                     Rate type
                                                 </th>
                                                 <th className="px-2 py-2">
+                                                    Rate
+                                                </th>
+                                                <th className="px-2 py-2">
                                                     Weight
                                                 </th>
                                                 <th className="px-2 py-2">
-                                                    Freight
+                                                    Calculated Freight
+                                                </th>
+                                                <th className="px-2 py-2">
+                                                    Custom Amount
+                                                </th>
+                                                <th className="px-2 py-2">
+                                                    Effective Freight
                                                 </th>
                                             </tr>
                                         </thead>
@@ -527,12 +570,29 @@ export default function LorryHireShow({
                                                             {line.rate_type_label ??
                                                                 line.rate_type}
                                                         </td>
+                                                        <td className="px-2 py-2 tabular-nums">
+                                                            {line.rate ?? '—'}
+                                                        </td>
                                                         <td className="px-2 py-2">
                                                             {line.loading_weight
                                                                 ? `${(Number(line.loading_weight) / 1000).toFixed(3)} MT`
                                                                 : '—'}
                                                         </td>
-                                                        <td className="px-2 py-2 font-medium">
+                                                        <td
+                                                            className={cn(
+                                                                'px-2 py-2 tabular-nums',
+                                                                line.custom_amount &&
+                                                                    'text-slate-400 line-through',
+                                                            )}
+                                                        >
+                                                            {line.calculated_freight_amount ??
+                                                                '—'}
+                                                        </td>
+                                                        <td className="px-2 py-2 tabular-nums">
+                                                            {line.custom_amount ??
+                                                                'Off'}
+                                                        </td>
+                                                        <td className="px-2 py-2 font-medium tabular-nums">
                                                             {line.freight_amount ??
                                                                 '—'}
                                                         </td>
@@ -550,6 +610,78 @@ export default function LorryHireShow({
                                     </div>
                                 ) : null}
                             </FbDetailCard>
+
+                            {revisions.length > 0 ? (
+                                <FbDetailCard title="Edit History">
+                                    <div className="overflow-x-auto px-4 py-3">
+                                        <table className="min-w-full text-sm">
+                                            <thead>
+                                                <tr className="text-left text-xs text-slate-500">
+                                                    <th className="px-2 py-2">
+                                                        When
+                                                    </th>
+                                                    <th className="px-2 py-2">
+                                                        By
+                                                    </th>
+                                                    <th className="px-2 py-2">
+                                                        Freight
+                                                    </th>
+                                                    <th className="px-2 py-2">
+                                                        TDS
+                                                    </th>
+                                                    <th className="px-2 py-2">
+                                                        Net Payable
+                                                    </th>
+                                                    <th className="px-2 py-2">
+                                                        Remark
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {revisions.map((revision) => (
+                                                    <tr
+                                                        key={revision.id}
+                                                        className="border-t border-slate-100 align-top"
+                                                    >
+                                                        <td className="px-2 py-2 whitespace-nowrap">
+                                                            {revision.created_at ??
+                                                                '—'}
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            {revision.created_by ??
+                                                                '—'}
+                                                        </td>
+                                                        <td className="px-2 py-2 tabular-nums">
+                                                            {revision.freight_before ??
+                                                                '—'}{' '}
+                                                            →{' '}
+                                                            {revision.freight_after ??
+                                                                '—'}
+                                                        </td>
+                                                        <td className="px-2 py-2 tabular-nums">
+                                                            {revision.tds_before ??
+                                                                '—'}{' '}
+                                                            →{' '}
+                                                            {revision.tds_after ??
+                                                                '—'}
+                                                        </td>
+                                                        <td className="px-2 py-2 tabular-nums">
+                                                            {revision.net_payable_before ??
+                                                                '—'}{' '}
+                                                            →{' '}
+                                                            {revision.net_payable_after ??
+                                                                '—'}
+                                                        </td>
+                                                        <td className="px-2 py-2 break-words">
+                                                            {revision.remark}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </FbDetailCard>
+                            ) : null}
 
                             <FbDetailCard title="Freight Adjustments">
                                 {permissions.can_create_adjustment ? (

@@ -10,6 +10,7 @@ use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Freight\FreightCalculator;
 use App\Models\BrokerAdjustment;
 use App\Models\LorryHire;
+use App\Models\LorryHireGoodsLine;
 use App\Models\TransporterBookBalanceEntry;
 use App\Models\TransporterVoucher;
 use Illuminate\Support\Collection;
@@ -100,26 +101,71 @@ final class LorryHireCalculationService
                 continue;
             }
 
-            $loading = $this->decimal($line->loading_weight, 3);
-            $applicable = bccomp($loading, $unloading, 3) <= 0 ? $loading : $unloading;
-
-            $freight = $this->goodsLineFreight([
+            $freight = $this->lineFreightAfterUnloading([
                 'rate_type' => $line->rate_type,
                 'rate' => $line->rate,
-                'is_fixed_amount' => false,
-                'actual_weight' => $applicable,
-                'charged_weight' => $applicable,
+                'loading_weight' => $line->loading_weight,
                 'package_count' => $line->lrGoodsRow?->package_count,
                 'rate_semantics' => $line->rate_semantics
                     ?? ($line->lrGoodsRow !== null ? $line->lrGoodsRow->rate_semantics : null)
                     ?? FreightRateSemantics::WeightKg,
-            ]);
+            ], $unloading);
 
             $line->forceFill(['freight_amount' => $freight])->save();
             $freightTotal = bcadd($freightTotal, $freight, 2);
         }
 
         return $this->money($freightTotal);
+    }
+
+    /**
+     * Rate Type × Rate × loading quantity for a persisted line, ignoring any Custom Amount.
+     *
+     * @return numeric-string
+     */
+    public function calculatedLineFreight(LorryHireGoodsLine $line): string
+    {
+        if ($line->custom_amount === null) {
+            return $this->money($line->freight_amount);
+        }
+
+        return $this->goodsLineFreight([
+            'rate_type' => $line->rate_type,
+            'rate' => $line->rate,
+            'actual_weight' => $line->loading_weight,
+            'charged_weight' => $line->loading_weight,
+            'package_count' => $line->lrGoodsRow?->package_count,
+            'rate_semantics' => $line->rate_semantics ?? FreightRateSemantics::WeightKg,
+        ]);
+    }
+
+    /**
+     * Variable-rate line freight on the lower of loading and unloading weight (no persistence).
+     *
+     * @param  array{
+     *     rate_type: FreightRateType,
+     *     rate: string,
+     *     loading_weight: string,
+     *     package_count?: string|int|float|null,
+     *     rate_semantics: FreightRateSemantics
+     * }  $line
+     * @return numeric-string
+     */
+    public function lineFreightAfterUnloading(array $line, string $unloadingWeight): string
+    {
+        $loading = $this->decimal($line['loading_weight'], 3);
+        $unloading = $this->decimal($unloadingWeight, 3);
+        $applicable = bccomp($loading, $unloading, 3) <= 0 ? $loading : $unloading;
+
+        return $this->goodsLineFreight([
+            'rate_type' => $line['rate_type'],
+            'rate' => $line['rate'],
+            'is_fixed_amount' => false,
+            'actual_weight' => $applicable,
+            'charged_weight' => $applicable,
+            'package_count' => $line['package_count'] ?? null,
+            'rate_semantics' => $line['rate_semantics'],
+        ]);
     }
 
     /**

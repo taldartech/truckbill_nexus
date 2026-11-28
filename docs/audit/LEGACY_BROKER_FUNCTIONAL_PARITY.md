@@ -100,7 +100,7 @@ Legacy model: `FreightBooking` + `FreightBookingController`. Nexus model: `Lorry
 | FH01 | Hire register / index                               | `FreightBookingController::index`, `getFreightBookingsData` | `LorryHireController::index`                                                                                                                          | Equivalent             | P3  | 6     |
 | FH02 | Create hire from LR                                 | `FreightBookingController::create/store`                    | `createFromLorryReceipt` / `storeFromLorryReceipt` with independent transporter rate, loading weight, TDS/margin preview (UI remediation 24 Nov 2026) | Equivalent             | P2  | 6     |
 | FH03 | Hire detail                                         | `show`                                                      | `LorryHireController::show`                                                                                                                           | Equivalent             | P3  | 6     |
-| FH04 | Update hire (rate, weight, transporter, fixed flag) | `update`, `edit`                                            | **No hire update route** — unloading/adjustments via `BrokerAdjustmentController` + `LorryHireCalculationService::recalculateFreightForUnloading`     | Partial                | P1  | 6     |
+| FH04 | Update hire (rate, weight, transporter, fixed flag) | `update`, `edit`                                            | `LorryHireEditController` + `LorryHireRevisionService` (guarded edit, Custom Amount, revisions; payee via Bilty)                                      | Equivalent             | P1  | 6     |
 | FH05 | Cancel hire + settle outstanding                    | cancel/destroy flows + settlement                           | `LorryHireController::cancel` + `LorryHireCancellationService`                                                                                        | Equivalent             | P2  | 6     |
 | FH06 | Pre-save confirm step                               | `freight_bookings/confirm` POST                             | Single-step create (no confirm endpoint)                                                                                                              | Intentional Difference | P3  | 6     |
 | FH07 | Settlement statement PDF                            | `freight_bookings/{id}/settlement`                          | **Missing** dedicated settlement PDF — **PO-LGC-006** / Phase 11                                                                                      | Deferred Future Phase  | P2  | 11    |
@@ -308,7 +308,7 @@ LR12,lr,Additional charges,Equivalent,P3,4
 FH01,hire,Hire register,Equivalent,P3,6
 FH02,hire,Create hire from LR,Equivalent,P2,6
 FH03,hire,Hire detail,Equivalent,P3,6
-FH04,hire,Update hire freight fields,Partial,P1,6
+FH04,hire,Update hire freight fields,Equivalent,P1,6
 FH05,hire,Cancel hire + settle,Equivalent,P2,6
 FH06,hire,Pre-save confirm step,Intentional Difference,P3,6
 FH07,hire,Settlement statement PDF,Missing Current Scope,P1,6
@@ -399,15 +399,14 @@ A14,accounting,Store inventory,N/A broker,Deferred Future Phase,P3,10
 
 **P1 — Missing Current Scope / Partial (authorized Phase 6 operations):**
 
-| Priority | ID        | Gap                             | Notes                                                                                      |
-| -------- | --------- | ------------------------------- | ------------------------------------------------------------------------------------------ |
-| P1       | VP03–VP04 | Voucher amend / void UI         | Legacy admin could edit/delete vouchers; Nexus only `transitionStatus`.                    |
-| P1       | VP09      | Bank payout export file         | Legacy `exportPayoutFile`; treasury handoff to bank not replicated.                        |
-| P1       | IN03      | Broker invoice edit after issue | Legacy `edit`/`update`; Nexus cancel-only correction path.                                 |
-| P1       | FH04      | Direct hire field update        | Legacy full `FreightBookingController::update`; Nexus adjustments + unloading recalc only. |
-| P1       | FH07      | Hire settlement statement PDF   | Legacy `settlementStatement` route; operators may rely on printable settlement.            |
-| P1       | IN06      | Custom invoice workflow         | **PO Decision** — policy for manual lines vs strict LR-linked invoices.                    |
-| P1       | M17       | Masters bulk upload             | High-volume onboarding parity for transporters/trucks/consignees.                          |
+| Priority | ID        | Gap                             | Notes                                                                           |
+| -------- | --------- | ------------------------------- | ------------------------------------------------------------------------------- |
+| P1       | VP03–VP04 | Voucher amend / void UI         | Legacy admin could edit/delete vouchers; Nexus only `transitionStatus`.         |
+| P1       | VP09      | Bank payout export file         | Legacy `exportPayoutFile`; treasury handoff to bank not replicated.             |
+| P1       | IN03      | Broker invoice edit after issue | Legacy `edit`/`update`; Nexus cancel-only correction path.                      |
+| P1       | FH07      | Hire settlement statement PDF   | Legacy `settlementStatement` route; operators may rely on printable settlement. |
+| P1       | IN06      | Custom invoice workflow         | **PO Decision** — policy for manual lines vs strict LR-linked invoices.         |
+| P1       | M17       | Masters bulk upload             | High-volume onboarding parity for transporters/trucks/consignees.               |
 
 **P1 — deferred but high business impact (not Phase 6 scope):**
 

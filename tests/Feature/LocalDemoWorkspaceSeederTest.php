@@ -6,6 +6,8 @@ use App\Models\Enquiry;
 use App\Models\EnquiryExternalReference;
 use App\Models\LinkedBiltyGroup;
 use App\Models\LorryHire;
+use App\Models\LorryHireGoodsLine;
+use App\Models\LorryHireRevision;
 use App\Models\Party;
 use App\Models\Role;
 use App\Models\RolePermission;
@@ -131,7 +133,11 @@ test('local demo seeder creates isolated companies roles masters and enquiries i
         ->and(BrokerInvoice::query()->where('company_id', $companyA->id)->whereNull('deleted_at')->count())
         ->toBeGreaterThanOrEqual(1)
         ->and(LinkedBiltyGroup::query()->where('company_id', $companyA->id)->whereNull('deleted_at')->count())
-        ->toBeGreaterThanOrEqual(1);
+        ->toBeGreaterThanOrEqual(1)
+        ->and(LorryHireGoodsLine::query()->where('company_id', $companyA->id)->where('custom_amount', '11500.00')->exists())
+        ->toBeTrue()
+        ->and(LorryHireRevision::query()->where('company_id', $companyA->id)->exists())
+        ->toBeTrue();
 
     $managerRole = Role::query()->where('slug', LocalDemoWorkspaceSeeder::ROLE_MANAGER)->firstOrFail();
     $codes = RolePermission::query()

@@ -18,7 +18,7 @@ Decisions below are **additive** to existing registers (`PHASE_1_TO_5_CONSOLIDAT
 | PO-LGC-004 | Platform transporter master (M16)      | Medium   | Optional                             |
 | PO-LGC-005 | Masters bulk import scope              | Medium   | W1 large master cutover              |
 | PO-LGC-006 | Hire settlement PDF vs adjustment-only | Medium   | Transporter disputes                 |
-| PO-LGC-007 | Direct hire PATCH vs adjustment-only   | Medium   | FH04 training/SOP                    |
+| PO-LGC-007 | Direct hire PATCH vs adjustment-only   | Accepted | Guarded edit (28 Nov 2026)           |
 | PO-LGC-008 | Driver advance / payroll (OwnFleet)    | Low      | Phase 10 hold                        |
 | PO-LGC-009 | Production tax PDF activation          | **High** | Legal invoice dispatch               |
 | PO-LGC-010 | AUD-CON-006 entitlement matrix         | Medium   | Restricted-mode UI                   |
@@ -98,6 +98,8 @@ Confirm analyze/preview/commit UX parity with legacy.
 | ------ | ------------------------------------------------------------------------------- |
 | A      | Adjustments + unloading recalc only (current) — Intentional                     |
 | B      | Add guarded `PATCH lorry-hires/{id}` for rate/weight/transporter pre-settlement |
+
+**Decision (Accepted, 28 November 2026 — Lorry Hire Edit & Custom Amount assignment):** guarded edit of Hire Date, Rate Type, Rate, Custom Amount and Remarks with a mandatory remark, previous/new confirmation and immutable revisions. Payee and vehicle change only through the Bilty. Edits cannot reduce Net Payable below amounts paid, adjusted or reserved, and TDS is frozen after settlement or the TDS submission date. See `Rules.md` §37.
 
 ---
 

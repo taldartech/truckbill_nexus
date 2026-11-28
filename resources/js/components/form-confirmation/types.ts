@@ -48,6 +48,8 @@ export type FormConfirmationProps = {
     /** Optional pre-grouped sections (takes precedence over flat fields when provided). */
     sections?: FieldReviewSection[];
     changes?: ChangeReview[];
+    /** Edit: read-only context rendered below the changes (e.g. payments and revised balance). */
+    supplementarySections?: FieldReviewSection[];
     /** Edit audit remark entered on the form, shown with the changes. */
     remark?: string;
     /** Destructive: what will happen when the action is confirmed. */

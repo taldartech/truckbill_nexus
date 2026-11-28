@@ -10,9 +10,9 @@ use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
 use App\Domains\Broker\LorryHire\LorryHireCancellationService;
+use App\Domains\Broker\LorryHire\LorryHireRevisionService;
 use App\Domains\Broker\LorryHire\LorryHireService;
 use App\Domains\Company\CompanyAccessService;
-use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
@@ -20,17 +20,17 @@ use App\Domains\Consignment\Support\FreightRateTypeCatalog;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
+use App\Http\Controllers\Branch\Concerns\PresentsLorryHireForm;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\LorryHire;
+use App\Models\LorryHireRevision;
 use App\Models\LorryReceipt;
-use App\Models\LrGoodsRow;
 use App\Models\User;
 use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -41,12 +41,14 @@ use Inertia\Response;
 class LorryHireController extends Controller
 {
     use AuthorizesBranchPanel;
+    use PresentsLorryHireForm;
 
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly LorryHireService $lorryHires,
         private readonly LorryHireCancellationService $cancellations,
+        private readonly LorryHireRevisionService $revisions,
         private readonly LorryHireCalculationService $calculations,
         private readonly BrokerAdjustmentService $adjustments,
         private readonly FreightAmountPresentation $freightPresentation,
@@ -85,6 +87,12 @@ class LorryHireController extends Controller
             $company,
             $branch,
         );
+        $canEditHires = $this->authorizer->allowsCustomer(
+            $actor,
+            PermissionCodes::BROKER_LORRY_HIRE_EDIT,
+            $company,
+            $branch,
+        );
 
         return Inertia::render('broker/lorry-hires/index', [
             'filters' => [
@@ -109,7 +117,7 @@ class LorryHireController extends Controller
             ])->values()->all(),
             'lorryHires' => [
                 'data' => collect($page->items())->map(
-                    fn (LorryHire $hire): array => $this->listPayload($hire, $maySeeFreight, $canCreateVoucher, $canAssignMemo),
+                    fn (LorryHire $hire): array => $this->listPayload($hire, $maySeeFreight, $canCreateVoucher, $canAssignMemo, $canEditHires),
                 )->values()->all(),
                 'meta' => [
                     'current_page' => $page->currentPage(),
@@ -159,14 +167,6 @@ class LorryHireController extends Controller
                 ->with('info', 'This Broker LR already has a Lorry Hire.');
         }
 
-        $lorryReceipt->load([
-            'fromStation',
-            'toStation',
-            'billingCustomer',
-            'vehicle.ownerParty',
-            'goodsRows.goodsType',
-        ]);
-
         $payee = null;
         $payeeBlockedReason = null;
         try {
@@ -183,28 +183,10 @@ class LorryHireController extends Controller
         );
 
         return Inertia::render('broker/lorry-hires/create', [
-            'lorryReceipt' => [
-                'id' => $lorryReceipt->id,
-                'lr_number' => $lorryReceipt->lr_number,
-                'lr_date' => $lorryReceipt->lr_date?->toDateString(),
-                'customer_name' => $lorryReceipt->billingCustomer?->name,
-                'vehicle_registration' => $lorryReceipt->vehicle?->registration_number,
-                'vehicle_owner_name' => $lorryReceipt->vehicle?->ownerParty?->name,
-                'loading_station' => $this->loadingStationLabel($lorryReceipt),
-                'unloading_station' => $this->unloadingStationLabel($lorryReceipt),
-            ],
+            ...$this->lorryHireFormProps($lorryReceipt),
             'payee' => $payee !== null ? ['id' => $payee->id, 'name' => $payee->name] : null,
             'payeeBlockedReason' => $payeeBlockedReason,
             'tdsPreview' => $payee !== null ? $this->lorryHires->tdsPreviewForPayee($payee) : null,
-            'goodsRows' => $lorryReceipt->goodsRows->map(fn (LrGoodsRow $row): array => [
-                'id' => $row->id,
-                'label' => $this->goodsRowLabel($row),
-                'package_count' => $row->package_count,
-                'actual_weight' => $row->actual_weight,
-                'charged_weight' => $row->charged_weight,
-                'rate_semantics' => ($row->rate_semantics ?? FreightRateSemantics::WeightKg)->value,
-            ])->values()->all(),
-            'rateTypeOptions' => FreightRateTypeCatalog::inertiaOptions(),
             'defaults' => [
                 'hire_date' => $this->lorryHires->defaultHireDate($company),
                 'rate_type' => FreightRateTypeCatalog::default()->value,
@@ -244,16 +226,7 @@ class LorryHireController extends Controller
 
         // Payee and loading weight are inherited from the Bilty; any client value is not accepted.
         $validated = $request->validate([
-            'hire_date' => ['required', 'date'],
-            'remarks' => ['nullable', 'string', 'max:2000'],
-            'goods_lines' => ['required', 'array', 'min:1'],
-            'goods_lines.*.lr_goods_row_id' => ['required', 'uuid'],
-            'goods_lines.*.rate_type' => [
-                'required',
-                'string',
-                Rule::in(FreightRateTypeCatalog::selectableValues()),
-            ],
-            'goods_lines.*.rate' => ['required', 'numeric', 'min:0'],
+            ...$this->lorryHireFormRules(),
             'tds_override_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'tds_override_remark' => ['nullable', 'string', 'max:2000'],
         ]);
@@ -325,6 +298,7 @@ class LorryHireController extends Controller
         $canCancel = $this->canCancelLorryHire($actor, $company, $branch)
             && $lorryHire->status !== LorryHireStatus::Cancelled;
         $canCreateVoucher = $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_VOUCHER_CREATE, $company, $branch);
+        $canEdit = $this->revisions->canEdit($actor, $company, $branch, $lorryHire);
 
         return Inertia::render('broker/lorry-hires/show', [
             'lorryHire' => $this->detailPayload($lorryHire, $maySeeFreight, $summary),
@@ -345,10 +319,12 @@ class LorryHireController extends Controller
                 'label' => ucwords(str_replace('_', ' ', $type->value)),
             ])->values()->all(),
             'delivery' => $this->deliveryPanelPayload($lorryHire),
+            'revisions' => $this->revisionHistoryPayload($lorryHire, $maySeeFreight),
             'permissions' => array_merge(
                 $this->lorryHirePermissions($actor, $company, $branch, $maySeeFreight),
                 $this->adjustmentDeliveryPermissions($actor, $company, $branch),
                 [
+                    'can_edit' => $canEdit,
                     'can_pay' => $canCreateVoucher
                         && $lorryHire->status !== LorryHireStatus::Cancelled
                         && bccomp($summary['remaining_payable'], '0', 2) === 1,
@@ -363,8 +339,46 @@ class LorryHireController extends Controller
                 'cancel' => $canCancel
                     ? route('branch.broker.lorry-hires.cancel', [$lorryHire], absolute: false)
                     : null,
+                'edit' => $canEdit
+                    ? route('branch.broker.lorry-hires.edit', [$lorryHire], absolute: false)
+                    : null,
             ],
         ]);
+    }
+
+    /**
+     * @return list<array{
+     *     id: string,
+     *     created_at: string|null,
+     *     created_by: string|null,
+     *     remark: string,
+     *     freight_before: string|null,
+     *     freight_after: string|null,
+     *     tds_before: string|null,
+     *     tds_after: string|null,
+     *     net_payable_before: string|null,
+     *     net_payable_after: string|null
+     * }>
+     */
+    private function revisionHistoryPayload(LorryHire $hire, bool $maySeeFreight): array
+    {
+        return array_values($hire->revisions()
+            ->with('createdBy')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (LorryHireRevision $revision): array => [
+                'id' => $revision->id,
+                'created_at' => $revision->created_at?->format('d-m-Y H:i'),
+                'created_by' => $revision->createdBy?->name,
+                'remark' => $revision->remark,
+                'freight_before' => $this->freightPresentation->presentAmount($revision->before['freight_total'] ?? null, $maySeeFreight),
+                'freight_after' => $this->freightPresentation->presentAmount($revision->after['freight_total'] ?? null, $maySeeFreight),
+                'tds_before' => $this->freightPresentation->presentAmount($revision->before['tds_amount'] ?? null, $maySeeFreight),
+                'tds_after' => $this->freightPresentation->presentAmount($revision->after['tds_amount'] ?? null, $maySeeFreight),
+                'net_payable_before' => $this->freightPresentation->presentAmount($revision->before['net_payable'] ?? null, $maySeeFreight),
+                'net_payable_after' => $this->freightPresentation->presentAmount($revision->after['net_payable'] ?? null, $maySeeFreight),
+            ])
+            ->all());
     }
 
     public function cancel(
@@ -508,6 +522,8 @@ class LorryHireController extends Controller
      *         rate_type: string,
      *         rate: string|null,
      *         freight_amount: string|null,
+     *         calculated_freight_amount: string|null,
+     *         custom_amount: string|null,
      *         loading_weight: string|null,
      *         is_fixed_amount: bool
      *     }>,
@@ -577,6 +593,13 @@ class LorryHireController extends Controller
                     'rate_type_label' => $this->freightRateTypeLabel($line->rate_type),
                     'rate' => $this->freightPresentation->presentAmount($line->rate, $maySeeFreight),
                     'freight_amount' => $this->freightPresentation->presentAmount($line->freight_amount, $maySeeFreight),
+                    'calculated_freight_amount' => $this->freightPresentation->presentAmount(
+                        $this->calculations->calculatedLineFreight($line),
+                        $maySeeFreight,
+                    ),
+                    'custom_amount' => $line->custom_amount !== null
+                        ? $this->freightPresentation->presentAmount($line->custom_amount, $maySeeFreight)
+                        : null,
                     'loading_weight' => $line->loading_weight,
                     'is_fixed_amount' => $line->is_fixed_amount,
                 ];
@@ -626,11 +649,16 @@ class LorryHireController extends Controller
      *     payable: bool,
      *     memo_number: string|null,
      *     memo_pending: bool,
-     *     urls: array{show: string}
+     *     urls: array{show: string, edit: string|null}
      * }
      */
-    private function listPayload(LorryHire $hire, bool $maySeeFreight, bool $canCreateVoucher = false, bool $canAssignMemo = false): array
-    {
+    private function listPayload(
+        LorryHire $hire,
+        bool $maySeeFreight,
+        bool $canCreateVoucher = false,
+        bool $canAssignMemo = false,
+        bool $canEdit = false,
+    ): array {
         $weightKg = $hire->goodsLines->sum(fn ($line): float => (float) ($line->loading_weight ?? 0));
         $primaryLine = $hire->goodsLines->first();
         $outstanding = number_format((float) ($hire->outstanding_amount ?? 0), 2, '.', '');
@@ -678,26 +706,11 @@ class LorryHireController extends Controller
             'memo_pending' => $memoPending,
             'urls' => [
                 'show' => route('branch.broker.lorry-hires.show', [$hire], absolute: false),
+                'edit' => $canEdit && $hire->status !== LorryHireStatus::Cancelled
+                    ? route('branch.broker.lorry-hires.edit', [$hire], absolute: false)
+                    : null,
             ],
         ];
-    }
-
-    private function loadingStationLabel(LorryReceipt $lorryReceipt): ?string
-    {
-        if ($lorryReceipt->fromStation !== null) {
-            return $lorryReceipt->fromStation->name;
-        }
-
-        return $lorryReceipt->from_text;
-    }
-
-    private function unloadingStationLabel(LorryReceipt $lorryReceipt): ?string
-    {
-        if ($lorryReceipt->toStation !== null) {
-            return $lorryReceipt->toStation->name;
-        }
-
-        return $lorryReceipt->to_text;
     }
 
     private function grossFreightMargin(?string $customerFreight, ?string $transporterFreight): ?string
@@ -715,17 +728,5 @@ class LorryHireController extends Controller
     private function freightRateTypeLabel(FreightRateType $type): string
     {
         return FreightRateTypeCatalog::label($type);
-    }
-
-    private function goodsRowLabel(LrGoodsRow $row): string
-    {
-        $typeName = $row->goodsType?->name;
-        $description = filled($row->goods_description) ? (string) $row->goods_description : null;
-
-        if ($typeName !== null && $description !== null) {
-            return $typeName.' — '.$description;
-        }
-
-        return $typeName ?? $description ?? 'Goods';
     }
 }

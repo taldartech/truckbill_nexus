@@ -10,6 +10,7 @@ use App\Domains\Broker\Enums\VoucherPaymentType;
 use App\Domains\Broker\Enums\VoucherStatus;
 use App\Domains\Broker\Invoice\BrokerInvoiceService;
 use App\Domains\Broker\LinkedBilty\LinkedBiltyGroupService;
+use App\Domains\Broker\LorryHire\LorryHireRevisionService;
 use App\Domains\Broker\LorryHire\LorryHireService;
 use App\Domains\Broker\Voucher\TransporterBookBalanceService;
 use App\Domains\Broker\Voucher\TransporterVoucherService;
@@ -698,6 +699,19 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 $consigneeParty,
                 $catalogues,
                 $bank,
+            );
+            $this->ensureLorryHireCustomAmountFixture(
+                $lorryReceipts,
+                app(LorryHireService::class),
+                app(LorryHireRevisionService::class),
+                $parties,
+                $company,
+                $head,
+                $owner,
+                $customerParty,
+                $consignorParty,
+                $consigneeParty,
+                $catalogues,
             );
         }
 
@@ -2338,26 +2352,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             'Thane',
         );
 
-        $agencyTransporter = $this->ensurePartyWithRoles(
-            $parties,
-            $owner,
-            $company,
-            $branch,
-            'demo-party:'.$company->id.':broker-agency-transporter',
-            'Demo Broker No Declaration Transporter',
-            [
-                [
-                    'role' => PartyRoleType::Transporter->value,
-                    'attributes' => [
-                        'pan' => 'BRKAG5678C',
-                        'pan_status' => 'active',
-                        'declaration' => false,
-                        'goods_vehicles_count' => 3,
-                    ],
-                ],
-            ],
-            'Nashik',
-        );
+        ['transporter' => $agencyTransporter, 'vehicle' => $agencyVehicle] = $this->ensureBrokerAgencyPayee($parties, $owner, $company, $branch);
 
         $substituteDriver = Party::query()
             ->where('company_id', $company->id)
@@ -2371,15 +2366,6 @@ class LocalDemoWorkspaceSeeder extends Seeder
             ownership: VehicleOwnership::Market,
             primaryDriverPartyId: null,
             ownerPartyId: $ownerTransporter->id,
-        );
-
-        $agencyVehicle = $this->ensureVehicle(
-            $company,
-            $branch,
-            'MH12BRKAGY'.substr((string) crc32($company->id.'broker-agency'), 0, 2),
-            ownership: VehicleOwnership::Market,
-            primaryDriverPartyId: null,
-            ownerPartyId: $agencyTransporter->id,
         );
 
         $pendingFrom = $fixtureRoot.':pending';
@@ -2658,6 +2644,131 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     'remark' => 'demo-broker-linked-pay:'.$company->id,
                 ]);
             }
+        }
+    }
+
+    /**
+     * No-declaration (2% TDS) agency transporter and its Market truck shared by the Broker fixtures.
+     *
+     * @return array{transporter: Party, vehicle: Vehicle}
+     */
+    private function ensureBrokerAgencyPayee(PartyService $parties, User $owner, Company $company, Branch $branch): array
+    {
+        $transporter = $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            $branch,
+            'demo-party:'.$company->id.':broker-agency-transporter',
+            'Demo Broker No Declaration Transporter',
+            [
+                [
+                    'role' => PartyRoleType::Transporter->value,
+                    'attributes' => [
+                        'pan' => 'BRKAG5678C',
+                        'pan_status' => 'active',
+                        'declaration' => false,
+                        'goods_vehicles_count' => 3,
+                    ],
+                ],
+            ],
+            'Nashik',
+        );
+
+        $vehicle = $this->ensureVehicle(
+            $company,
+            $branch,
+            'MH12BRKAGY'.substr((string) crc32($company->id.'broker-agency'), 0, 2),
+            ownership: VehicleOwnership::Market,
+            primaryDriverPartyId: null,
+            ownerPartyId: $transporter->id,
+        );
+
+        return ['transporter' => $transporter, 'vehicle' => $vehicle];
+    }
+
+    /**
+     * Per Charged Weight hire booked at a Custom Amount, then edited once (Rules §37 demo).
+     *
+     * @param  array{truck: OwnerCatalogueItem, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}  $catalogues
+     */
+    private function ensureLorryHireCustomAmountFixture(
+        LorryReceiptService $lorryReceipts,
+        LorryHireService $lorryHires,
+        LorryHireRevisionService $revisions,
+        PartyService $parties,
+        Company $company,
+        Branch $branch,
+        User $owner,
+        Party $billingCustomer,
+        Party $consignor,
+        Party $consignee,
+        array $catalogues,
+    ): void {
+        $marker = 'demo-broker:'.$company->id.':custom-amount';
+        $lr = LorryReceipt::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->where('external_gr_number', $marker)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($lr === null) {
+            ['transporter' => $transporter, 'vehicle' => $vehicle] = $this->ensureBrokerAgencyPayee($parties, $owner, $company, $branch);
+            $lr = $lorryReceipts->create($company, $branch, $owner, [
+                'workflow_context' => LrWorkflowContext::Broker->value,
+                'vehicle_id' => $vehicle->id,
+                'billing_customer_party_id' => $billingCustomer->id,
+                'intended_payee_type' => 'agency',
+                'intended_payee_party_id' => $transporter->id,
+                'number_mode' => 'auto',
+                'lr_date' => CarbonImmutable::now()->toDateString(),
+                'from_text' => 'Demo Broker custom amount origin',
+                'external_gr_number' => $marker,
+                'to_text' => 'Demo Broker custom amount destination',
+                'consignor_party_id' => $consignor->id,
+                'consignee_party_id' => $consignee->id,
+                'goods' => [[
+                    'goods_type_id' => $catalogues['goods']->id,
+                    'package_type_id' => $catalogues['package']->id,
+                    'goods_description' => 'Broker custom amount steel',
+                    'package_count' => 15,
+                    'actual_weight' => 9000,
+                    'charged_weight' => 9000,
+                    'freight_rate_type' => FreightRateType::PerChargedWeight->value,
+                    'freight_rate' => 1500,
+                ]],
+            ]);
+        }
+
+        $hire = $lr->lorryHire()->whereNull('deleted_at')->first();
+        if ($hire === null) {
+            $row = $lr->goodsRows()->firstOrFail();
+            $hire = $lorryHires->createFromLorryReceipt($lr, $owner, [
+                'hire_date' => CarbonImmutable::now()->toDateString(),
+                'remarks' => 'Demo Custom Amount hire',
+                'goods_lines' => [[
+                    'lr_goods_row_id' => (string) $row->id,
+                    'rate_type' => FreightRateType::PerChargedWeight->value,
+                    'rate' => '1200',
+                    'custom_amount' => '11000',
+                ]],
+            ]);
+        }
+
+        if ($hire->revisions()->doesntExist()) {
+            $line = $hire->goodsLines()->firstOrFail();
+            $revisions->revise($hire, $owner, [
+                'hire_date' => $hire->hire_date?->toDateString(),
+                'remarks' => $hire->remarks,
+                'edit_remark' => 'Demo: transporter agreed a revised lump sum',
+                'goods_lines' => [[
+                    'lr_goods_row_id' => $line->lr_goods_row_id,
+                    'rate_type' => $line->rate_type->value,
+                    'rate' => $line->rate,
+                    'custom_amount' => '11500',
+                ]],
+            ]);
         }
     }
 

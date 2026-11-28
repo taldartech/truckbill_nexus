@@ -23,6 +23,7 @@ use App\Models\Company;
 use App\Models\DriverAdvanceEntry;
 use App\Models\GlLedger;
 use App\Models\LorryHire;
+use App\Models\LorryHireRevision;
 use App\Models\LorryReceipt;
 use App\Models\PartloadChallan;
 use App\Models\PartloadDeliveryReceipt;
@@ -36,6 +37,7 @@ use App\Models\TripInvoice;
 use App\Models\TripInvoicePayment;
 use App\Models\User;
 use App\Models\VendorExpensePayment;
+use Illuminate\Support\Str;
 
 /**
  * Translates operational financial events into the shared accounting engine (ADR-010).
@@ -249,6 +251,78 @@ final class OperationalAccountingPoster
             $actor,
             'Cancel Lorry Hire '.$hire->hire_number.': '.$remark,
         );
+
+        $revisionIds = LorryHireRevision::query()
+            ->where('company_id', $hire->company_id)
+            ->where('lorry_hire_id', $hire->id)
+            ->pluck('id');
+
+        foreach ($revisionIds as $revisionId) {
+            $this->reverseBySource(
+                $company,
+                LorryHireRevision::class,
+                (string) $revisionId,
+                'hire_revised',
+                $actor,
+                'Cancel Lorry Hire '.$hire->hire_number.': '.$remark,
+            );
+        }
+    }
+
+    /**
+     * Delta journal for an edited Lorry Hire; the original recognition voucher is never rewritten.
+     */
+    public function postLorryHireRevised(LorryHireRevision $revision, LorryHire $hire, User $actor): void
+    {
+        $company = Company::query()->findOrFail($hire->company_id);
+        $allowControlled = $this->hasPostedLink($company, LorryHire::class, $hire->id, 'hire_recognized');
+        if (! $this->shouldAutoPost($company) && ! $allowControlled) {
+            return;
+        }
+
+        $freightDelta = $this->money($revision->freight_delta);
+        $tdsDelta = $this->money($revision->tds_delta);
+        if (bccomp($freightDelta, '0', 2) === 0 && bccomp($tdsDelta, '0', 2) === 0) {
+            return;
+        }
+        $payableDelta = bcsub($freightDelta, $tdsDelta, 2);
+
+        $branch = Branch::query()->findOrFail($hire->branch_id);
+        $this->prepare($company);
+
+        $expense = $this->ledgers->requireByName($company, 'Transporter Freight Expense');
+        $payable = $this->ledgers->requireByName($company, 'Transporter Payables');
+        $zero = $this->zeroAmount();
+
+        $lines = array_values(array_filter([
+            $this->signedJournalLine($expense->id, $freightDelta, $zero, 'Lorry Hire edit freight change'),
+            $this->signedJournalLine($payable->id, bcmul($payableDelta, '-1', 2), $zero, 'Lorry Hire edit payable change'),
+            bccomp($tdsDelta, '0', 2) !== 0
+                ? $this->signedJournalLine(
+                    $this->ledgers->requireByName($company, 'TDS Payable')->id,
+                    bcmul($tdsDelta, '-1', 2),
+                    $zero,
+                    'Lorry Hire edit TDS change',
+                )
+                : null,
+        ]));
+
+        $this->posting->postManual(
+            company: $company,
+            actor: $actor,
+            header: [
+                'voucher_type' => AccountingVoucherType::Journal,
+                'voucher_date' => $revision->created_at?->toDateString() ?? now()->toDateString(),
+                'narration' => Str::limit('Lorry Hire edit ('.$hire->hire_number.'): '.$revision->remark, 1990),
+                'branch_id' => $branch->id,
+                'source_type' => LorryHireRevision::class,
+                'source_id' => $revision->id,
+                'posting_purpose' => 'hire_revised',
+            ],
+            lines: $lines,
+            branch: $branch,
+            allowControlledCorrection: $allowControlled,
+        );
     }
 
     public function postBrokerAdjustment(
@@ -320,6 +394,28 @@ final class OperationalAccountingPoster
             branch: $branch,
             allowControlledCorrection: $allowControlled,
         );
+    }
+
+    /**
+     * Debit for a positive signed amount, credit for a negative one; null when zero.
+     *
+     * @param  numeric-string  $signedDebit
+     * @return array{gl_ledger_id: string, debit_amount: string, credit_amount: string, narration: string}|null
+     */
+    private function signedJournalLine(string $ledgerId, string $signedDebit, string $zero, string $narration): ?array
+    {
+        $comparison = bccomp($signedDebit, '0', 2);
+        if ($comparison === 0) {
+            return null;
+        }
+        $amount = $comparison > 0 ? $signedDebit : bcmul($signedDebit, '-1', 2);
+
+        return [
+            'gl_ledger_id' => $ledgerId,
+            'debit_amount' => $comparison > 0 ? $amount : $zero,
+            'credit_amount' => $comparison > 0 ? $zero : $amount,
+            'narration' => $narration,
+        ];
     }
 
     public function postTransporterVoucherPaid(TransporterVoucher $voucher, User $actor, bool $allowBypass = false): void

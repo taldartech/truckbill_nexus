@@ -86,24 +86,13 @@ async function selectMarketVehicle(
         await vehicle.selectOption(vehicleId);
         return vehicleId;
     }
-    const options = vehicle.locator('option[value]:not([value=""])');
-    const count = await options.count();
-    for (let i = 0; i < count; i += 1) {
-        const text = (await options.nth(i).textContent()) ?? '';
-        if (/\bMarket\b/i.test(text) && !/\bOwn\b/i.test(text)) {
-            const value = await options.nth(i).getAttribute('value');
-            if (value) {
-                await vehicle.selectOption(value);
-                return value;
-            }
-        }
-    }
-    // Open combobox and pick first Market option from the live list.
+    // Market trucks are the listbox options not marked "Own vehicle" (Rules §32);
+    // the hidden native options carry only the truck number.
     await page.locator('#vehicle_id-trigger').click();
     const marketOption = page
         .getByRole('listbox')
         .getByRole('option')
-        .filter({ hasText: /\bMarket\b/i })
+        .filter({ hasNotText: /\bOwn vehicle\b/i })
         .first();
     await expect(marketOption).toBeVisible({ timeout: 10_000 });
     const label = (await marketOption.innerText()).trim();

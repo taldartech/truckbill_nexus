@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Eye } from 'lucide-react';
+import { Eye, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
@@ -39,7 +39,7 @@ type HireRow = {
     billing_customer_party_id: string | null;
     memo_number: string | null;
     memo_pending: boolean;
-    urls: { show: string };
+    urls: { show: string; edit?: string | null };
 };
 
 type SelectedHire = Pick<
@@ -405,6 +405,14 @@ export default function LorryHiresIndex({
                                                         href={row.urls.show}
                                                         variant="info"
                                                     />
+                                                    {row.urls.edit ? (
+                                                        <AppIconAction
+                                                            icon={Pencil}
+                                                            label={`Edit lorry hire ${row.hire_number}`}
+                                                            href={row.urls.edit}
+                                                            variant="outline"
+                                                        />
+                                                    ) : null}
                                                 </div>
                                             </td>
                                         </tr>

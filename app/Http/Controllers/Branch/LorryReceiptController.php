@@ -404,6 +404,9 @@ class LorryReceiptController extends Controller
                 'id' => $linkedLorryHire->id,
                 'hire_number' => $linkedLorryHire->hire_number,
                 'show_url' => route('branch.broker.lorry-hires.show', [$linkedLorryHire], absolute: false),
+                'edit_url' => $this->customerAllows($actor, $company, $branch, PermissionCodes::BROKER_LORRY_HIRE_EDIT)
+                    ? route('branch.broker.lorry-hires.edit', [$linkedLorryHire], absolute: false)
+                    : null,
             ],
             'urls' => [
                 'index' => route('branch.lorry-receipts.index', absolute: false),

@@ -112,6 +112,7 @@ type Props = {
         id: string;
         hire_number: string;
         show_url: string;
+        edit_url?: string | null;
     } | null;
     urls: {
         index: string;
@@ -304,6 +305,15 @@ export default function LorryReceiptShow({
                                                 label={`View Lorry Hire ${linkedLorryHire.hire_number}`}
                                                 href={linkedLorryHire.show_url}
                                                 variant="default"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                        {linkedLorryHire?.edit_url ? (
+                                            <AppIconAction
+                                                icon={Pencil}
+                                                label={`Edit Lorry Hire ${linkedLorryHire.hire_number}`}
+                                                href={linkedLorryHire.edit_url}
+                                                variant="outline"
                                                 size="sm"
                                             />
                                         ) : null}

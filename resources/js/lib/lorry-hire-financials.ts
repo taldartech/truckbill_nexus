@@ -1,6 +1,6 @@
 import { KG_PER_MT, parseNumeric } from '@/lib/operational-weight';
 
-/** Mirrors `FreightCalculator` / `LorryHireService` for the Lorry Hire create preview only. */
+/** Mirrors `FreightCalculator` / `LorryHireGoodsLineBuilder` for the Lorry Hire form preview only. */
 export type HireRateBasis = {
     package_count: string | null;
     actual_weight: string | null;
@@ -70,19 +70,39 @@ export function lineTransporterFreight(
     }
 }
 
-/** Single place for the Transporter Freight → TDS → Net Payable arithmetic. */
+/** Effective line freight: the Custom Amount when entered, otherwise the calculated freight. */
+export function effectiveLineFreight(
+    calculatedFreight: number | null,
+    customEnabled: boolean,
+    customInput: string,
+): number | null {
+    if (!customEnabled) {
+        return calculatedFreight;
+    }
+    const custom = parseNumeric(customInput);
+
+    return custom !== null && custom > 0 ? roundMoney(custom) : null;
+}
+
+/**
+ * Single place for the Transporter Freight → TDS → Net Payable arithmetic.
+ * `lockedTdsAmount` keeps an existing TDS once the submission lock applies (edit only).
+ */
 export function summarizeHireFinancials(
     lineFreights: Array<number | null>,
     tdsPercent: string | null,
+    lockedTdsAmount: number | null = null,
 ): HireFinancials {
     const transporterFreight = roundMoney(
         lineFreights.reduce<number>((sum, value) => sum + (value ?? 0), 0),
     );
     const percent = parseNumeric(tdsPercent);
     const tdsAmount =
-        percent !== null
-            ? roundMoney((transporterFreight * percent) / 100)
-            : null;
+        lockedTdsAmount !== null
+            ? lockedTdsAmount
+            : percent !== null
+              ? roundMoney((transporterFreight * percent) / 100)
+              : null;
 
     return {
         transporterFreight,

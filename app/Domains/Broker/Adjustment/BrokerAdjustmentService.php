@@ -120,6 +120,8 @@ final class BrokerAdjustmentService
 
         return $this->auditedTransaction->run(function () use ($hire, $actor, $company, $branch, $previousWeight, $newWeight, $reason, $occurredAt): BrokerAdjustment {
             return $this->withTenant($company, $branch, function () use ($hire, $actor, $company, $branch, $previousWeight, $newWeight, $reason, $occurredAt): BrokerAdjustment {
+                $this->lockAdjustableHire($hire);
+
                 $adjustment = BrokerAdjustment::query()->create([
                     'id' => (string) Str::uuid(),
                     'company_id' => $company->id,
@@ -261,6 +263,8 @@ final class BrokerAdjustmentService
 
         return $this->auditedTransaction->run(function () use ($hire, $actor, $company, $branch, $type, $amount, $reason, $occurredAt): BrokerAdjustment {
             return $this->withTenant($company, $branch, function () use ($hire, $actor, $company, $branch, $type, $amount, $reason, $occurredAt): BrokerAdjustment {
+                $this->lockAdjustableHire($hire);
+
                 $adjustment = BrokerAdjustment::query()->create([
                     'id' => (string) Str::uuid(),
                     'company_id' => $company->id,
@@ -323,6 +327,8 @@ final class BrokerAdjustmentService
 
         return $this->auditedTransaction->run(function () use ($hire, $actor, $company, $branch, $type, $quantity, $rate, $amount, $reason, $occurredAt): BrokerAdjustment {
             return $this->withTenant($company, $branch, function () use ($hire, $actor, $company, $branch, $type, $quantity, $rate, $amount, $reason, $occurredAt): BrokerAdjustment {
+                $this->lockAdjustableHire($hire);
+
                 $adjustment = BrokerAdjustment::query()->create([
                     'id' => (string) Str::uuid(),
                     'company_id' => $company->id,
@@ -369,6 +375,16 @@ final class BrokerAdjustmentService
         $hire->forceFill([
             'outstanding_amount' => $summary['outstanding_amount'],
         ])->save();
+    }
+
+    /**
+     * Serializes with vouchers and Lorry Hire edits, then revalidates the fresh hire.
+     */
+    private function lockAdjustableHire(LorryHire $hire): void
+    {
+        LorryHire::query()->whereKey($hire->id)->lockForUpdate()->firstOrFail();
+        $hire->refresh();
+        $this->assertAdjustable($hire);
     }
 
     private function assertAdjustable(LorryHire $hire): void

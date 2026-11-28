@@ -47,6 +47,7 @@ use App\Http\Controllers\Branch\DriverAdvanceController;
 use App\Http\Controllers\Branch\EnquiryController;
 use App\Http\Controllers\Branch\LinkedBiltyGroupController;
 use App\Http\Controllers\Branch\LorryHireController;
+use App\Http\Controllers\Branch\LorryHireEditController;
 use App\Http\Controllers\Branch\LorryReceiptController;
 use App\Http\Controllers\Branch\MastersHubController;
 use App\Http\Controllers\Branch\PartloadChallanController;
@@ -316,6 +317,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::middleware('company.capability:broker.lorry_hire')->group(function () {
             Route::get('/broker/lorry-hires', [LorryHireController::class, 'index'])->name('branch.broker.lorry-hires.index');
             Route::get('/broker/lorry-hires/{lorryHire}', [LorryHireController::class, 'show'])->name('branch.broker.lorry-hires.show');
+            Route::get('/broker/lorry-hires/{lorryHire}/edit', [LorryHireEditController::class, 'edit'])->name('branch.broker.lorry-hires.edit');
+            Route::post('/broker/lorry-hires/{lorryHire}/revision-preview', [LorryHireEditController::class, 'preview'])->name('branch.broker.lorry-hires.revision-preview');
+            Route::put('/broker/lorry-hires/{lorryHire}', [LorryHireEditController::class, 'update'])->name('branch.broker.lorry-hires.update');
             Route::post('/broker/lorry-hires/{lorryHire}/cancel', [LorryHireController::class, 'cancel'])->name('branch.broker.lorry-hires.cancel');
             Route::get('/broker/lorry-hires/{lorryHire}/adjustments', [BrokerAdjustmentController::class, 'index'])->name('branch.broker.lorry-hires.adjustments.index');
             Route::post('/broker/lorry-hires/{lorryHire}/adjustments', [BrokerAdjustmentController::class, 'store'])->name('branch.broker.lorry-hires.adjustments.store');

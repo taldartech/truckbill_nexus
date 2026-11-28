@@ -129,7 +129,7 @@ test.describe('Bilty UI + Lorry Hire financial workflow', () => {
         await page.locator('#rate_type_0').selectOption('per_charged_weight');
         // Loading/charged weight is inherited read-only from Bilty (8.000 MT).
         await expect(
-            page.getByText('Charged weight (MT)', { exact: true }).first(),
+            page.getByText('Charged Weight', { exact: true }).first(),
         ).toBeVisible();
         await expect(page.locator('#loading_weight_0')).toHaveCount(0);
         // ₹7500/MT × inherited 8 MT charged weight = ₹60000.
@@ -137,7 +137,7 @@ test.describe('Bilty UI + Lorry Hire financial workflow', () => {
         await expect(
             page.getByText(/TR Freight|Balance|Hire Charges/i).first(),
         ).toBeVisible();
-        await expect(page.getByText(/60000\.00|₹60000/).first()).toBeVisible({
+        await expect(page.getByText(/60,?000\.00/).first()).toBeVisible({
             timeout: 5_000,
         });
         await capture(page, 'lorry-hire-create', VIEWPORTS[0]);
@@ -155,9 +155,9 @@ test.describe('Bilty UI + Lorry Hire financial workflow', () => {
             timeout: 30_000,
         });
 
-        await expect(page.getByText('60000.00').first()).toBeVisible();
+        await expect(page.getByText(/60,?000\.00/).first()).toBeVisible();
         await expect(
-            page.getByText(/58800\.00|60000\.00/).first(),
+            page.getByText(/58,?800\.00|60,?000\.00/).first(),
         ).toBeVisible();
         await expect(
             page.getByText(/Per Charged Weight/i).first(),

@@ -7,12 +7,8 @@ use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
-use App\Domains\Consignment\Enums\FreightRateSemantics;
-use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
-use App\Domains\Consignment\Exceptions\LorryReceiptDomainException;
-use App\Domains\Consignment\Support\FreightRateTypeCatalog;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Numbering\DocumentNumberAllocator;
@@ -31,7 +27,6 @@ use App\Models\LorryHire;
 use App\Models\LorryHireGoodsLine;
 use App\Models\LorryHireTdsSnapshot;
 use App\Models\LorryReceipt;
-use App\Models\LrGoodsRow;
 use App\Models\Party;
 use App\Models\PartyRole;
 use App\Models\User;
@@ -62,6 +57,7 @@ final class LorryHireService
         private readonly TransporterTdsCalculationService $tds = new TransporterTdsCalculationService,
         private readonly LorryHireCalculationService $calculations = new LorryHireCalculationService,
         private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
+        private readonly LorryHireGoodsLineBuilder $goodsLines = new LorryHireGoodsLineBuilder,
     ) {}
 
     /**
@@ -157,7 +153,8 @@ final class LorryHireService
      *     goods_lines?: list<array{
      *         lr_goods_row_id: string,
      *         rate_type?: string,
-     *         rate: string|float|int
+     *         rate: string|float|int,
+     *         custom_amount?: string|float|int|null
      *     }>
      * }  $payload
      *
@@ -179,18 +176,8 @@ final class LorryHireService
         $vehicle = $this->resolveMarketVehicle($lorryReceipt, $company, $branch);
         $transporter = $this->inheritedPayee($lorryReceipt, $company, $branch);
 
-        $goodsLinesInput = $payload['goods_lines'] ?? [];
-        if ($goodsLinesInput === []) {
-            throw ValidationException::withMessages([
-                'goods_lines' => 'At least one transporter freight goods line is required.',
-            ]);
-        }
-
-        $computedLines = $this->computeGoodsLines($lorryReceipt, $goodsLinesInput);
-        $freightTotal = '0.00';
-        foreach ($computedLines as $line) {
-            $freightTotal = bcadd($freightTotal, $line['freight_amount'], 2);
-        }
+        $computedLines = $this->goodsLines->build($lorryReceipt, $payload['goods_lines'] ?? []);
+        $freightTotal = $this->goodsLines->freightTotal($computedLines);
 
         $tdsContext = $this->tdsContextForPayee($transporter);
 
@@ -302,6 +289,7 @@ final class LorryHireService
                             'rate' => $line['rate'],
                             'is_fixed_amount' => $line['is_fixed_amount'],
                             'freight_amount' => $line['freight_amount'],
+                            'custom_amount' => $line['custom_amount'],
                             'loading_weight' => $line['loading_weight'],
                         ]);
                     }
@@ -370,130 +358,6 @@ final class LorryHireService
                 previous: $e,
             );
         }
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $goodsLinesInput
-     * @return list<array{
-     *     lr_goods_row_id: string,
-     *     rate_type: FreightRateType,
-     *     rate: string,
-     *     is_fixed_amount: bool,
-     *     freight_amount: numeric-string,
-     *     loading_weight: numeric-string,
-     *     rate_semantics: FreightRateSemantics
-     * }>
-     */
-    private function computeGoodsLines(LorryReceipt $lorryReceipt, array $goodsLinesInput): array
-    {
-        $lorryReceipt->loadMissing('goodsRows');
-        $rowsById = $lorryReceipt->goodsRows->keyBy('id');
-        $seen = [];
-        $computed = [];
-
-        foreach ($goodsLinesInput as $index => $input) {
-            $rowId = (string) ($input['lr_goods_row_id'] ?? '');
-            if ($rowId === '' || ! $rowsById->has($rowId)) {
-                throw ValidationException::withMessages([
-                    "goods_lines.{$index}.lr_goods_row_id" => 'Goods line must reference an LR goods row.',
-                ]);
-            }
-            if (isset($seen[$rowId])) {
-                throw ValidationException::withMessages([
-                    "goods_lines.{$index}.lr_goods_row_id" => 'Duplicate LR goods row on Lorry Hire.',
-                ]);
-            }
-            $seen[$rowId] = true;
-
-            /** @var LrGoodsRow $row */
-            $row = $rowsById->get($rowId);
-
-            $rateType = FreightRateType::tryFrom(
-                (string) ($input['rate_type'] ?? FreightRateTypeCatalog::default()->value),
-            );
-            if ($rateType === null) {
-                throw ValidationException::withMessages([
-                    "goods_lines.{$index}.rate_type" => 'Invalid transporter freight rate type.',
-                ]);
-            }
-            $isFixed = $rateType === FreightRateType::FixedAmount;
-
-            $rate = (string) ($input['rate'] ?? '');
-            if ($rate === '' || ! is_numeric($rate)) {
-                throw ValidationException::withMessages([
-                    "goods_lines.{$index}.rate" => 'Transporter rate is required.',
-                ]);
-            }
-
-            // Weights are inherited from the linked Bilty — never accepted from the client.
-            $actualWeight = $row->actual_weight !== null
-                ? $this->formattedWeight((string) $row->actual_weight)
-                : '0.000';
-            $chargedWeight = $row->charged_weight !== null
-                ? $this->formattedWeight((string) $row->charged_weight)
-                : $actualWeight;
-
-            // Authoritative semantics come from the linked Bilty goods row — never trust client overrides.
-            $semantics = $row->rate_semantics ?? FreightRateSemantics::WeightKg;
-
-            try {
-                $freightAmount = $this->calculations->goodsLineFreight([
-                    'rate_type' => $rateType,
-                    'rate' => $rate,
-                    'is_fixed_amount' => $isFixed,
-                    'package_count' => $row->package_count,
-                    'actual_weight' => $actualWeight,
-                    'charged_weight' => $chargedWeight,
-                    'rate_semantics' => $semantics,
-                ]);
-            } catch (LorryReceiptDomainException $e) {
-                throw ValidationException::withMessages([
-                    "goods_lines.{$index}.rate_type" => $e->getMessage(),
-                ]);
-            }
-
-            $computed[] = [
-                'lr_goods_row_id' => $rowId,
-                'rate_type' => $rateType,
-                'rate' => number_format((float) $rate, 4, '.', ''),
-                'is_fixed_amount' => $isFixed,
-                'freight_amount' => $freightAmount,
-                'loading_weight' => $this->loadingWeightForRateBasis($row, $rateType),
-                'rate_semantics' => $semantics,
-            ];
-        }
-
-        return $computed;
-    }
-
-    /**
-     * Loading weight snapshot (canonical KG) derived from the Bilty goods row by rate basis:
-     * Per Actual Weight uses actual weight; every other rate type uses charged weight.
-     * Falls back to the other weight when the preferred one is missing or zero.
-     *
-     * @return numeric-string
-     */
-    private function loadingWeightForRateBasis(LrGoodsRow $row, FreightRateType $rateType): string
-    {
-        $candidates = $rateType === FreightRateType::PerActualWeight
-            ? [$row->actual_weight, $row->charged_weight]
-            : [$row->charged_weight, $row->actual_weight];
-
-        foreach ($candidates as $weight) {
-            if ($weight !== null && is_numeric((string) $weight) && bccomp((string) $weight, '0', 3) > 0) {
-                return $this->formattedWeight((string) $weight);
-            }
-        }
-
-        return '0.000';
-    }
-
-    /**
-     * @return numeric-string
-     */
-    private function formattedWeight(string $value): string
-    {
-        return number_format((float) $value, 3, '.', '');
     }
 
     private function resolveMarketVehicle(LorryReceipt $lorryReceipt, Company $company, Branch $branch): Vehicle
