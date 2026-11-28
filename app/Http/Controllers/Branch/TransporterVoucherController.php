@@ -342,6 +342,7 @@ class TransporterVoucherController extends Controller
         return [
             'payee' => [
                 'name' => $transporter?->name,
+                'mobile' => $transporter?->contact_number,
                 'short_name' => $transporter?->short_name,
                 'beneficiary_id' => $transporter?->bank_beneficiary_id,
                 'tds_percent' => $first?->tds_percent,

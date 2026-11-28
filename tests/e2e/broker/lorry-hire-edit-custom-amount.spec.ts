@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { brokerSignIn } from '../fixtures/broker-workflow';
+import { loginAndEnterBrokerBranch } from '../fixtures/broker-workflow';
 
 test.describe('Lorry Hire Custom Amounts (legacy)', () => {
     test.beforeEach(async ({ page }) => {
-        await brokerSignIn(page);
+        await loginAndEnterBrokerBranch(page);
     });
 
     test('edit adds signed custom amount rows without overriding freight', async ({
@@ -16,7 +16,7 @@ test.describe('Lorry Hire Custom Amounts (legacy)', () => {
 
         await expect(page.locator('#lorry-hire-form')).toBeVisible();
 
-        await page.getByRole('button', { name: 'Add row' }).click();
+        await page.getByRole('button', { name: 'Add amount' }).click();
         await page.locator('#custom_description_0').fill('Loading surcharge');
         await page.locator('#custom_amount_row_0').fill('500');
 

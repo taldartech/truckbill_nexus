@@ -158,7 +158,10 @@ export function MemoPodDialog({
                     }
                 }}
             >
-                <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
+                <DialogContent
+                    className="max-h-[92vh] overflow-y-auto sm:max-w-3xl"
+                    data-testid="memo-pod-modal"
+                >
                     <DialogHeader>
                         <DialogTitle>
                             {context
@@ -206,7 +209,10 @@ export function MemoPodDialog({
                                 <strong>{context.customer_name ?? '—'}</strong>
                             </p>
 
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div
+                                className="grid gap-4 sm:grid-cols-2"
+                                data-testid="memo-panel-header-fields"
+                            >
                                 <div className="space-y-1">
                                     <Label htmlFor="memo_number" required>
                                         Memo / POD No.

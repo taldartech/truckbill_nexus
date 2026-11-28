@@ -277,7 +277,10 @@ export default function LorryHiresIndex({
                         ) : null}
                     </BulkSelectionToolbar>
 
-                    <div className="overflow-x-auto">
+                    <div
+                        className="overflow-x-auto"
+                        data-testid="good-hires-register"
+                    >
                         <table className="app-index-table min-w-full">
                             <thead>
                                 <tr>

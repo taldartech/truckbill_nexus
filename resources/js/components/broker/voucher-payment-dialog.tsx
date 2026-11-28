@@ -1,5 +1,5 @@
 import { useForm, useHttp } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import { QuickCreateBankCashSheet } from '@/components/masters/quick-create-bank-cash-sheet';
 import {
@@ -35,6 +35,7 @@ type ContextHire = {
 type PaymentContext = {
     payee: {
         name: string | null;
+        mobile: string | null;
         short_name: string | null;
         beneficiary_id: string | null;
         tds_percent: string | null;
@@ -362,7 +363,10 @@ export function VoucherPaymentDialog({
                     }
                 }}
             >
-                <DialogContent className="max-h-[88vh] overflow-y-auto p-5 sm:max-w-4xl">
+                <DialogContent
+                    className="max-h-[88vh] overflow-y-auto p-5 sm:max-w-4xl"
+                    data-testid="voucher-payment-modal"
+                >
                     <DialogHeader>
                         <DialogTitle>
                             {context ? title : 'Voucher Payment'}
@@ -397,485 +401,478 @@ export function VoucherPaymentDialog({
                                 review();
                             }}
                         >
-                            <dl className="grid gap-x-6 gap-y-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm sm:grid-cols-3">
-                                <Fact
-                                    label="Payee"
-                                    value={context.payee.name}
-                                />
-                                <Fact
-                                    label="Short Name"
-                                    value={context.payee.short_name}
-                                />
-                                <Fact
-                                    label="Beneficiary ID"
-                                    value={context.payee.beneficiary_id}
-                                />
-                                <Fact
-                                    label="Truck"
-                                    value={context.vehicle_registration}
-                                />
-                                <Fact
-                                    label="TDS %"
-                                    value={context.payee.tds_percent}
-                                />
-                                <Fact
-                                    label="Book Balance"
-                                    value={money(context.book_balance)}
-                                />
-                                <Fact
-                                    label="Total Freight"
-                                    value={money(
-                                        sum(
-                                            hires.map((hire) =>
-                                                toNumber(hire.freight_total),
-                                            ),
-                                        ),
-                                    )}
-                                />
-                                <Fact
-                                    label="Paid"
-                                    value={money(
-                                        sum(
-                                            hires.map((hire) =>
-                                                toNumber(hire.paid_amount),
-                                            ),
-                                        ),
-                                    )}
-                                />
-                                <Fact
-                                    label="Reserved (Pending / In Progress)"
-                                    value={money(
-                                        sum(
-                                            hires.map((hire) =>
-                                                toNumber(hire.reserved_amount),
-                                            ),
-                                        ),
-                                    )}
-                                />
-                                <Fact
-                                    label="Outstanding"
-                                    value={money(totalRemaining)}
-                                />
-                            </dl>
-
-                            <div className="overflow-x-auto rounded-lg border border-slate-200">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-600 uppercase">
-                                        <tr>
-                                            <th className="px-3 py-2">
-                                                Hire No
-                                            </th>
-                                            <th className="px-3 py-2">Truck</th>
-                                            <th className="px-3 py-2">Payee</th>
-                                            <th className="px-3 py-2 text-end">
-                                                Outstanding
-                                            </th>
-                                            <th className="px-3 py-2 text-end">
-                                                Shortage / Damage
-                                            </th>
-                                            <th className="w-44 px-3 py-2 text-end">
-                                                Payment Amount{' '}
-                                                <span aria-hidden="true">
-                                                    *
-                                                </span>
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {form.data.lines.map((line, index) => {
-                                            const hire = hires.find(
-                                                (row) =>
-                                                    row.id ===
-                                                    line.lorry_hire_id,
-                                            );
-                                            const error = errorFor(
-                                                `lines.${index}.amount`,
-                                            );
-
-                                            return (
-                                                <tr
-                                                    key={line.lorry_hire_id}
-                                                    className="border-t border-slate-100 align-top"
-                                                >
-                                                    <td className="px-3 py-2 font-medium">
-                                                        {hire?.hire_number}
-                                                        {hire?.lr_number ? (
-                                                            <span className="block text-xs text-slate-500">
-                                                                Bilty{' '}
-                                                                {hire.lr_number}
-                                                            </span>
-                                                        ) : null}
-                                                    </td>
-                                                    <td className="px-3 py-2">
-                                                        {context.vehicle_registration ??
-                                                            '—'}
-                                                    </td>
-                                                    <td className="px-3 py-2">
-                                                        {context.payee.name ??
-                                                            '—'}
-                                                    </td>
-                                                    <td className="px-3 py-2 text-end tabular-nums">
-                                                        {money(
-                                                            hire?.remaining_payable,
-                                                        )}
-                                                    </td>
-                                                    <td className="px-3 py-2 text-end tabular-nums">
-                                                        {money(
-                                                            hire?.shortage_damage_amount,
-                                                        )}
-                                                    </td>
-                                                    <td className="px-3 py-2">
-                                                        <Input
-                                                            type="number"
-                                                            min="0.01"
-                                                            step="0.01"
-                                                            inputMode="decimal"
-                                                            className="text-end tabular-nums"
-                                                            aria-label={`Payment amount for ${hire?.hire_number ?? 'Lorry Hire'}`}
-                                                            aria-invalid={
-                                                                error
-                                                                    ? true
-                                                                    : undefined
-                                                            }
-                                                            value={line.amount}
-                                                            onChange={(event) =>
-                                                                setLineAmount(
-                                                                    index,
-                                                                    event.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                        />
-                                                        {error ? (
-                                                            <p
-                                                                role="alert"
-                                                                className="mt-1 text-xs text-destructive"
-                                                            >
-                                                                {error}
-                                                            </p>
-                                                        ) : null}
-                                                    </td>
+                            <LegacyPayPanel
+                                title="Previous Payments"
+                                testId="voucher-panel-previous-payments"
+                            >
+                                {context.previous_payments.length === 0 ? (
+                                    <p className="text-sm text-slate-500">
+                                        No previous payments for the selected
+                                        Lorry Hire(s).
+                                    </p>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-slate-50 text-left text-xs text-slate-600">
+                                                <tr>
+                                                    <th className="px-2 py-1">
+                                                        Voucher
+                                                    </th>
+                                                    <th className="px-2 py-1">
+                                                        FR No
+                                                    </th>
+                                                    <th className="px-2 py-1">
+                                                        Date
+                                                    </th>
+                                                    <th className="px-2 py-1">
+                                                        Type / Mode
+                                                    </th>
+                                                    <th className="px-2 py-1">
+                                                        Status
+                                                    </th>
+                                                    <th className="px-2 py-1 text-end">
+                                                        Amount
+                                                    </th>
                                                 </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                    <tfoot>
-                                        <tr className="border-t border-slate-200 bg-slate-50 font-semibold">
-                                            <td
-                                                className="px-3 py-2 text-end"
-                                                colSpan={5}
-                                            >
-                                                Total Payment Amount
-                                            </td>
-                                            <td className="px-3 py-2 text-end tabular-nums">
-                                                {formatInr(totalPayment)}
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                            {errorFor('lines') ? (
-                                <p
-                                    role="alert"
-                                    className="text-sm text-destructive"
-                                >
-                                    {errorFor('lines')}
-                                </p>
-                            ) : null}
+                                            </thead>
+                                            <tbody>
+                                                {context.previous_payments.map(
+                                                    (payment) => (
+                                                        <tr
+                                                            key={payment.id}
+                                                            className="border-t border-slate-100"
+                                                        >
+                                                            <td className="px-2 py-1">
+                                                                {
+                                                                    payment.voucher_number
+                                                                }
+                                                            </td>
+                                                            <td className="px-2 py-1">
+                                                                {
+                                                                    payment.hire_number
+                                                                }
+                                                            </td>
+                                                            <td className="px-2 py-1">
+                                                                {payment.voucher_date ??
+                                                                    '—'}
+                                                            </td>
+                                                            <td className="px-2 py-1">
+                                                                {
+                                                                    payment.payment_type
+                                                                }{' '}
+                                                                /{' '}
+                                                                {payment.payment_mode ??
+                                                                    '—'}
+                                                            </td>
+                                                            <td className="px-2 py-1 capitalize">
+                                                                {payment.status.replace(
+                                                                    '_',
+                                                                    ' ',
+                                                                )}
+                                                            </td>
+                                                            <td className="px-2 py-1 text-end tabular-nums">
+                                                                {money(
+                                                                    payment.amount,
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ),
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </LegacyPayPanel>
 
-                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                <div className="space-y-1">
-                                    <Label
-                                        htmlFor="voucher_payment_type"
-                                        required
-                                    >
-                                        Payment Type
-                                    </Label>
-                                    <select
-                                        id="voucher_payment_type"
-                                        value={form.data.payment_type}
-                                        onChange={(event) => {
-                                            setTypeTouched(true);
-                                            form.setData(
-                                                'payment_type',
-                                                event.target.value,
-                                            );
-                                        }}
-                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                    >
-                                        {context.payment_type_options.map(
-                                            (option) => (
-                                                <option
-                                                    key={option.value}
-                                                    value={option.value}
+                            <LegacyPayPanel
+                                title="Transporter Details"
+                                testId="voucher-panel-transporter"
+                            >
+                                <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                                    <Fact
+                                        label="Transporter"
+                                        value={context.payee.name}
+                                    />
+                                    <Fact
+                                        label="Mobile"
+                                        value={context.payee.mobile}
+                                    />
+                                    <Fact
+                                        label="Short Name"
+                                        value={context.payee.short_name}
+                                    />
+                                    <Fact
+                                        label="Beneficiary ID"
+                                        value={context.payee.beneficiary_id}
+                                    />
+                                    <Fact
+                                        label="TDS Percentage"
+                                        value={context.payee.tds_percent}
+                                    />
+                                    <Fact
+                                        label="Truck Number"
+                                        value={context.vehicle_registration}
+                                    />
+                                    <Fact
+                                        label="Book Balance"
+                                        value={money(context.book_balance)}
+                                    />
+                                </dl>
+                            </LegacyPayPanel>
+
+                            <LegacyPayPanel
+                                title="Payment Allocation"
+                                testId="voucher-panel-allocation"
+                            >
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-600 uppercase">
+                                            <tr>
+                                                <th className="px-3 py-2">
+                                                    FR No.
+                                                </th>
+                                                <th className="px-3 py-2">
+                                                    LR Number
+                                                </th>
+                                                <th className="px-3 py-2 text-end">
+                                                    Balance Amount
+                                                </th>
+                                                <th className="w-44 px-3 py-2 text-end">
+                                                    Payment Amount{' '}
+                                                    <span aria-hidden="true">
+                                                        *
+                                                    </span>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {form.data.lines.map(
+                                                (line, index) => {
+                                                    const hire = hires.find(
+                                                        (row) =>
+                                                            row.id ===
+                                                            line.lorry_hire_id,
+                                                    );
+                                                    const error = errorFor(
+                                                        `lines.${index}.amount`,
+                                                    );
+
+                                                    return (
+                                                        <tr
+                                                            key={
+                                                                line.lorry_hire_id
+                                                            }
+                                                            className="border-t border-slate-100 align-top"
+                                                        >
+                                                            <td className="px-3 py-2 font-medium">
+                                                                {
+                                                                    hire?.hire_number
+                                                                }
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                {hire?.lr_number ??
+                                                                    '—'}
+                                                            </td>
+                                                            <td className="px-3 py-2 text-end tabular-nums">
+                                                                {money(
+                                                                    hire?.remaining_payable,
+                                                                )}
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <Input
+                                                                    type="number"
+                                                                    min="0.01"
+                                                                    step="0.01"
+                                                                    inputMode="decimal"
+                                                                    className="text-end tabular-nums"
+                                                                    aria-label={`Payment amount for ${hire?.hire_number ?? 'Lorry Hire'}`}
+                                                                    aria-invalid={
+                                                                        error
+                                                                            ? true
+                                                                            : undefined
+                                                                    }
+                                                                    value={
+                                                                        line.amount
+                                                                    }
+                                                                    onChange={(
+                                                                        event,
+                                                                    ) =>
+                                                                        setLineAmount(
+                                                                            index,
+                                                                            event
+                                                                                .target
+                                                                                .value,
+                                                                        )
+                                                                    }
+                                                                />
+                                                                {error ? (
+                                                                    <p
+                                                                        role="alert"
+                                                                        className="mt-1 text-xs text-destructive"
+                                                                    >
+                                                                        {error}
+                                                                    </p>
+                                                                ) : null}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                },
+                                            )}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr className="border-t border-slate-200 bg-slate-50 font-semibold">
+                                                <td
+                                                    className="px-3 py-2 text-end"
+                                                    colSpan={3}
                                                 >
-                                                    {option.label}
-                                                </option>
-                                            ),
-                                        )}
-                                    </select>
-                                    <FieldError
-                                        message={errorFor('payment_type')}
-                                    />
+                                                    Total Payment Amount
+                                                </td>
+                                                <td className="px-3 py-2 text-end tabular-nums">
+                                                    {formatInr(totalPayment)}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
                                 </div>
-
-                                <div className="space-y-1">
-                                    <Label
-                                        htmlFor="voucher_payment_mode"
-                                        required
-                                    >
-                                        Payment Mode
-                                    </Label>
-                                    <select
-                                        id="voucher_payment_mode"
-                                        value={form.data.payment_mode}
-                                        onChange={(event) => {
-                                            form.setData((current) => ({
-                                                ...current,
-                                                payment_mode:
-                                                    event.target.value,
-                                                confirm_duplicate: false,
-                                            }));
-                                            form.clearErrors();
-                                        }}
-                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                    >
-                                        <option value="">Select mode</option>
-                                        {context.payment_mode_options.map(
-                                            (option) => (
-                                                <option
-                                                    key={option.value}
-                                                    value={option.value}
-                                                >
-                                                    {option.label}
-                                                </option>
-                                            ),
-                                        )}
-                                    </select>
-                                    <FieldError
-                                        message={errorFor('payment_mode')}
-                                    />
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label
-                                        htmlFor="voucher_payment_date"
-                                        required
-                                    >
-                                        Payment Date
-                                    </Label>
-                                    <Input
-                                        id="voucher_payment_date"
-                                        type="date"
-                                        value={form.data.voucher_date}
-                                        onChange={(event) =>
-                                            form.setData(
-                                                'voucher_date',
-                                                event.target.value,
-                                            )
-                                        }
-                                    />
-                                    <FieldError
-                                        message={errorFor('voucher_date')}
-                                    />
-                                </div>
-
-                                {isAdjustment ? (
+                                {errorFor('lines') ? (
                                     <p
-                                        className="rounded-md border border-[#bae6fd] bg-[#f0f9ff] px-3 py-2 text-sm text-slate-700 sm:col-span-2 lg:col-span-3"
-                                        data-testid="adjustment-limit"
+                                        role="alert"
+                                        className="text-sm text-destructive"
                                     >
-                                        Available Book Balance{' '}
-                                        <strong>
-                                            {money(context.book_balance)}
-                                        </strong>{' '}
-                                        · Maximum adjustment{' '}
-                                        <strong>{money(maxAdjustment)}</strong>.
-                                        Posts Dr Transporter Payable / Cr
-                                        Transporter Advance; no Bank or Cash
-                                        payment.
+                                        {errorFor('lines')}
                                     </p>
                                 ) : null}
+                            </LegacyPayPanel>
 
-                                {form.data.payment_mode === 'bank' ? (
-                                    <div className="sm:col-span-2">
-                                        <SearchableCombobox
-                                            id="voucher_bank_cash_account_id"
-                                            name="bank_cash_account_id"
-                                            label="Bank Account"
-                                            options={accountOptions}
-                                            value={
-                                                form.data.bank_cash_account_id
-                                            }
-                                            onValueChange={(next) =>
-                                                form.setData(
-                                                    'bank_cash_account_id',
-                                                    next,
-                                                )
-                                            }
-                                            placeholder="Search account…"
-                                            emptyMessage="No bank accounts in this branch."
-                                            error={errorFor(
-                                                'bank_cash_account_id',
-                                            )}
-                                            addAction={
-                                                context.permissions
-                                                    .can_create_bank_cash
-                                                    ? {
-                                                          label: '+ Add',
-                                                          onClick: () =>
-                                                              setQuickBankOpen(
-                                                                  true,
-                                                              ),
-                                                      }
-                                                    : undefined
-                                            }
-                                        />
-                                    </div>
-                                ) : null}
-
-                                {form.data.payment_mode === 'paid_to_pump' ? (
+                            <LegacyPayPanel
+                                title="Payment Details"
+                                testId="voucher-panel-payment-details"
+                            >
+                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                     <div className="space-y-1">
                                         <Label
-                                            htmlFor="voucher_pump_reference"
+                                            htmlFor="voucher_payment_type"
                                             required
                                         >
-                                            Pump Name
+                                            Payment Type
+                                        </Label>
+                                        <select
+                                            id="voucher_payment_type"
+                                            value={form.data.payment_type}
+                                            onChange={(event) => {
+                                                setTypeTouched(true);
+                                                form.setData(
+                                                    'payment_type',
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                        >
+                                            {context.payment_type_options.map(
+                                                (option) => (
+                                                    <option
+                                                        key={option.value}
+                                                        value={option.value}
+                                                    >
+                                                        {option.label}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                        <FieldError
+                                            message={errorFor('payment_type')}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <Label
+                                            htmlFor="voucher_payment_mode"
+                                            required
+                                        >
+                                            Payment Mode
+                                        </Label>
+                                        <select
+                                            id="voucher_payment_mode"
+                                            value={form.data.payment_mode}
+                                            onChange={(event) => {
+                                                form.setData((current) => ({
+                                                    ...current,
+                                                    payment_mode:
+                                                        event.target.value,
+                                                    confirm_duplicate: false,
+                                                }));
+                                                form.clearErrors();
+                                            }}
+                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                        >
+                                            <option value="">
+                                                Select mode
+                                            </option>
+                                            {context.payment_mode_options.map(
+                                                (option) => (
+                                                    <option
+                                                        key={option.value}
+                                                        value={option.value}
+                                                    >
+                                                        {option.label}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                        <FieldError
+                                            message={errorFor('payment_mode')}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <Label
+                                            htmlFor="voucher_payment_date"
+                                            required
+                                        >
+                                            Payment Date
                                         </Label>
                                         <Input
-                                            id="voucher_pump_reference"
-                                            value={form.data.pump_reference}
+                                            id="voucher_payment_date"
+                                            type="date"
+                                            value={form.data.voucher_date}
                                             onChange={(event) =>
                                                 form.setData(
-                                                    'pump_reference',
+                                                    'voucher_date',
                                                     event.target.value,
                                                 )
                                             }
                                         />
                                         <FieldError
-                                            message={errorFor('pump_reference')}
+                                            message={errorFor('voucher_date')}
                                         />
                                     </div>
-                                ) : null}
 
-                                <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-                                    <Label htmlFor="voucher_remark">
-                                        Remarks
-                                    </Label>
-                                    <Input
-                                        id="voucher_remark"
-                                        value={form.data.remark}
-                                        onChange={(event) =>
-                                            form.setData(
-                                                'remark',
-                                                event.target.value,
-                                            )
-                                        }
-                                    />
-                                </div>
-                            </div>
+                                    {isAdjustment ? (
+                                        <p
+                                            className="rounded-md border border-[#bae6fd] bg-[#f0f9ff] px-3 py-2 text-sm text-slate-700 sm:col-span-2 lg:col-span-3"
+                                            data-testid="adjustment-limit"
+                                        >
+                                            Available Book Balance{' '}
+                                            <strong>
+                                                {money(context.book_balance)}
+                                            </strong>{' '}
+                                            · Maximum adjustment{' '}
+                                            <strong>
+                                                {money(maxAdjustment)}
+                                            </strong>
+                                            . Posts Dr Transporter Payable / Cr
+                                            Transporter Advance; no Bank or Cash
+                                            payment.
+                                        </p>
+                                    ) : null}
 
-                            {form.errors.confirm_duplicate ? (
-                                <div
-                                    role="alert"
-                                    className="space-y-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                                >
-                                    <p>{form.errors.confirm_duplicate}</p>
-                                    <label className="flex items-center gap-2 font-medium">
-                                        <input
-                                            type="checkbox"
-                                            className="size-4"
-                                            checked={
-                                                form.data.confirm_duplicate
-                                            }
+                                    {form.data.payment_mode === 'bank' ? (
+                                        <div className="sm:col-span-2">
+                                            <SearchableCombobox
+                                                id="voucher_bank_cash_account_id"
+                                                name="bank_cash_account_id"
+                                                label="Bank Account"
+                                                options={accountOptions}
+                                                value={
+                                                    form.data
+                                                        .bank_cash_account_id
+                                                }
+                                                onValueChange={(next) =>
+                                                    form.setData(
+                                                        'bank_cash_account_id',
+                                                        next,
+                                                    )
+                                                }
+                                                placeholder="Search account…"
+                                                emptyMessage="No bank accounts in this branch."
+                                                error={errorFor(
+                                                    'bank_cash_account_id',
+                                                )}
+                                                addAction={
+                                                    context.permissions
+                                                        .can_create_bank_cash
+                                                        ? {
+                                                              label: '+ Add',
+                                                              onClick: () =>
+                                                                  setQuickBankOpen(
+                                                                      true,
+                                                                  ),
+                                                          }
+                                                        : undefined
+                                                }
+                                            />
+                                        </div>
+                                    ) : null}
+
+                                    {form.data.payment_mode ===
+                                    'paid_to_pump' ? (
+                                        <div className="space-y-1">
+                                            <Label
+                                                htmlFor="voucher_pump_reference"
+                                                required
+                                            >
+                                                Pump Name
+                                            </Label>
+                                            <Input
+                                                id="voucher_pump_reference"
+                                                value={form.data.pump_reference}
+                                                onChange={(event) =>
+                                                    form.setData(
+                                                        'pump_reference',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            />
+                                            <FieldError
+                                                message={errorFor(
+                                                    'pump_reference',
+                                                )}
+                                            />
+                                        </div>
+                                    ) : null}
+
+                                    <div className="space-y-1 sm:col-span-2">
+                                        <Label htmlFor="voucher_remark">
+                                            Remarks
+                                        </Label>
+                                        <Input
+                                            id="voucher_remark"
+                                            value={form.data.remark}
                                             onChange={(event) =>
                                                 form.setData(
-                                                    'confirm_duplicate',
-                                                    event.target.checked,
+                                                    'remark',
+                                                    event.target.value,
                                                 )
                                             }
                                         />
-                                        This is not a duplicate — record it
-                                    </label>
+                                    </div>
                                 </div>
-                            ) : null}
 
-                            {context.previous_payments.length > 0 ? (
-                                <details className="rounded-lg border border-slate-200 text-sm">
-                                    <summary className="cursor-pointer px-3 py-2 font-medium">
-                                        Previous payments (
-                                        {context.previous_payments.length})
-                                    </summary>
-                                    <table className="w-full">
-                                        <thead className="bg-slate-50 text-left text-xs text-slate-600">
-                                            <tr>
-                                                <th className="px-3 py-1">
-                                                    Voucher
-                                                </th>
-                                                <th className="px-3 py-1">
-                                                    Hire
-                                                </th>
-                                                <th className="px-3 py-1">
-                                                    Date
-                                                </th>
-                                                <th className="px-3 py-1">
-                                                    Type / Mode
-                                                </th>
-                                                <th className="px-3 py-1">
-                                                    Status
-                                                </th>
-                                                <th className="px-3 py-1 text-end">
-                                                    Amount
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {context.previous_payments.map(
-                                                (payment) => (
-                                                    <tr
-                                                        key={payment.id}
-                                                        className="border-t border-slate-100"
-                                                    >
-                                                        <td className="px-3 py-1">
-                                                            {
-                                                                payment.voucher_number
-                                                            }
-                                                        </td>
-                                                        <td className="px-3 py-1">
-                                                            {
-                                                                payment.hire_number
-                                                            }
-                                                        </td>
-                                                        <td className="px-3 py-1">
-                                                            {payment.voucher_date ??
-                                                                '—'}
-                                                        </td>
-                                                        <td className="px-3 py-1">
-                                                            {
-                                                                payment.payment_type
-                                                            }{' '}
-                                                            /{' '}
-                                                            {payment.payment_mode ??
-                                                                '—'}
-                                                        </td>
-                                                        <td className="px-3 py-1 capitalize">
-                                                            {payment.status.replace(
-                                                                '_',
-                                                                ' ',
-                                                            )}
-                                                        </td>
-                                                        <td className="px-3 py-1 text-end tabular-nums">
-                                                            {money(
-                                                                payment.amount,
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ),
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </details>
-                            ) : null}
+                                {form.errors.confirm_duplicate ? (
+                                    <div
+                                        role="alert"
+                                        className="space-y-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                                    >
+                                        <p>{form.errors.confirm_duplicate}</p>
+                                        <label className="flex items-center gap-2 font-medium">
+                                            <input
+                                                type="checkbox"
+                                                className="size-4"
+                                                checked={
+                                                    form.data.confirm_duplicate
+                                                }
+                                                onChange={(event) =>
+                                                    form.setData(
+                                                        'confirm_duplicate',
+                                                        event.target.checked,
+                                                    )
+                                                }
+                                            />
+                                            This is not a duplicate — record it
+                                        </label>
+                                    </div>
+                                ) : null}
+                            </LegacyPayPanel>
                         </form>
                     ) : null}
 
@@ -1045,6 +1042,28 @@ export function VoucherPaymentDialog({
                 />
             ) : null}
         </>
+    );
+}
+
+function LegacyPayPanel({
+    title,
+    testId,
+    children,
+}: {
+    title: string;
+    testId: string;
+    children: ReactNode;
+}) {
+    return (
+        <section
+            data-testid={testId}
+            className="overflow-hidden rounded-lg border border-slate-200"
+        >
+            <h3 className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800">
+                {title}
+            </h3>
+            <div className="p-3">{children}</div>
+        </section>
     );
 }
 

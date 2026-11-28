@@ -20,6 +20,8 @@ import {
 import type { HireRateBasis } from '@/lib/lorry-hire-financials';
 import { formatInr } from '@/lib/money';
 import { formatMtLabel, kgToMt, parseNumeric } from '@/lib/operational-weight';
+import { CustomAmountsSection } from '@/pages/broker/lorry-hires/components/custom-amounts-section';
+import { LinkedBiltyContextPanel } from '@/pages/broker/lorry-hires/components/linked-bilty-context-panel';
 import {
     LrfActions,
     LrfPage,
@@ -181,17 +183,6 @@ function money(value: string | number | null | undefined): string {
     return value === null || value === undefined || value === ''
         ? '—'
         : formatInr(value);
-}
-
-function ReadOnlyMetric({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="min-w-0 space-y-0.5">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-sm font-medium break-words text-foreground">
-                {value}
-            </p>
-        </div>
-    );
 }
 
 function initialLines(
@@ -674,54 +665,15 @@ export default function LorryHireForm({
                 backHref={urls.lr_show}
                 backLabel={isEdit ? 'Back to Lorry Hire' : 'Back to bilty'}
             >
-                <LrfSection
-                    step={1}
-                    title="Bilty summary"
-                    description={
-                        isEdit
-                            ? 'Inherited from the linked Bilty — change Payee, Truck or shipment details through Bilty edit'
-                            : 'Inherited from the linked Bilty — read only'
-                    }
-                    tone="receipt"
-                >
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        <ReadOnlyMetric
-                            label="Bilty Number"
-                            value={dash(lorryReceipt.lr_number)}
-                        />
-                        <ReadOnlyMetric
-                            label="Bilty Date"
-                            value={formatDisplayDate(lorryReceipt.lr_date)}
-                        />
-                        <ReadOnlyMetric
-                            label="Customer"
-                            value={dash(lorryReceipt.customer_name)}
-                        />
-                        <ReadOnlyMetric
-                            label="Truck Number"
-                            value={dash(lorryReceipt.vehicle_registration)}
-                        />
-                        <ReadOnlyMetric
-                            label="Truck Owner"
-                            value={dash(lorryReceipt.vehicle_owner_name)}
-                        />
-                        <ReadOnlyMetric
-                            label="Payee"
-                            value={dash(payee?.name)}
-                        />
-                        <ReadOnlyMetric label="Route" value={route} />
-                        <ReadOnlyMetric label="Goods" value={goodsLabel} />
-                        <ReadOnlyMetric label="Units" value={unitsLabel} />
-                        <ReadOnlyMetric
-                            label="Actual Weight"
-                            value={actualWeightLabel}
-                        />
-                        <ReadOnlyMetric
-                            label="Charged Weight"
-                            value={chargedWeightLabel}
-                        />
-                    </div>
-                </LrfSection>
+                <LinkedBiltyContextPanel
+                    lorryReceipt={lorryReceipt}
+                    payeeName={payee?.name ?? null}
+                    goodsLabel={goodsLabel}
+                    unitsLabel={unitsLabel}
+                    actualWeightLabel={actualWeightLabel}
+                    chargedWeightLabel={chargedWeightLabel}
+                    isEdit={isEdit}
+                />
 
                 {payee === null ? (
                     <div
@@ -751,418 +703,362 @@ export default function LorryHireForm({
                         onSubmit={handleSubmit}
                         noValidate={isEdit}
                     >
-                        <LrfSection
-                            step={2}
-                            title="Hire details"
-                            description="Transporter rate and freight per goods line from the linked Bilty"
-                            tone="goods"
-                        >
-                            <div className="grid gap-3 md:grid-cols-3">
-                                <div className="space-y-1">
-                                    <Label htmlFor="hire_date" required>
-                                        Hire Date
-                                    </Label>
-                                    <Input
-                                        id="hire_date"
-                                        type="date"
-                                        className="h-9"
-                                        value={form.data.hire_date}
-                                        onChange={(event) =>
-                                            form.setData(
-                                                'hire_date',
-                                                event.target.value,
-                                            )
-                                        }
-                                        required
-                                    />
-                                    <InputError
-                                        message={form.errors.hire_date}
-                                    />
+                        <div data-testid="lorry-hire-section-hire-charges">
+                            <LrfSection
+                                step={2}
+                                title="Hire Charges"
+                                description="TR rate, amount, TDS and balance per goods line from the linked Bilty"
+                                tone="goods"
+                            >
+                                <div className="grid gap-3 md:grid-cols-3">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="hire_date" required>
+                                            Hire Date
+                                        </Label>
+                                        <Input
+                                            id="hire_date"
+                                            type="date"
+                                            className="h-9"
+                                            value={form.data.hire_date}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'hire_date',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            required
+                                        />
+                                        <InputError
+                                            message={form.errors.hire_date}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="mt-3 space-y-2">
-                                {goodsRows.map((row, index) => {
-                                    const draft = form.data.goods_lines[index];
-                                    const isFixed =
-                                        draft.rate_type === FIXED_RATE;
-                                    const freight = lineFreights[index];
+                                <div className="mt-3 space-y-2">
+                                    {goodsRows.map((row, index) => {
+                                        const draft =
+                                            form.data.goods_lines[index];
+                                        const isFixed =
+                                            draft.rate_type === FIXED_RATE;
+                                        const freight = lineFreights[index];
 
-                                    return (
-                                        <div
-                                            key={row.id}
-                                            className="grid items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(10.5rem,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)]"
-                                        >
-                                            <div className="min-w-0 space-y-0.5">
-                                                <p className="text-xs text-muted-foreground">
-                                                    Goods
-                                                </p>
-                                                <p className="text-sm font-medium break-words">
-                                                    {row.label}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {dash(row.package_count)}{' '}
-                                                    units ·{' '}
-                                                    {sumKgAsMtLabel([
-                                                        row.actual_weight,
-                                                    ])}{' '}
-                                                    actual ·{' '}
-                                                    {sumKgAsMtLabel([
-                                                        row.charged_weight ??
+                                        return (
+                                            <div
+                                                key={row.id}
+                                                className="grid items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(10.5rem,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)]"
+                                            >
+                                                <div className="min-w-0 space-y-0.5">
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Goods
+                                                    </p>
+                                                    <p className="text-sm font-medium break-words">
+                                                        {row.label}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {dash(
+                                                            row.package_count,
+                                                        )}{' '}
+                                                        units ·{' '}
+                                                        {sumKgAsMtLabel([
                                                             row.actual_weight,
-                                                    ])}{' '}
-                                                    charged
-                                                </p>
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <Label
-                                                    htmlFor={`rate_type_${index}`}
-                                                    className="text-xs"
-                                                    required
-                                                >
-                                                    Rate Type
-                                                </Label>
-                                                <select
-                                                    id={`rate_type_${index}`}
-                                                    className={SELECT_CLASS}
-                                                    value={draft.rate_type}
-                                                    onChange={(event) =>
-                                                        updateLine(index, {
-                                                            rate_type:
-                                                                event.target
-                                                                    .value,
-                                                        })
-                                                    }
-                                                    required
-                                                >
-                                                    {rateTypeOptions.map(
-                                                        (option) => (
-                                                            <option
-                                                                key={
-                                                                    option.value
-                                                                }
-                                                                value={
-                                                                    option.value
-                                                                }
-                                                            >
-                                                                {option.label}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </select>
-                                                <InputError
-                                                    message={lineError(
-                                                        index,
-                                                        'rate_type',
-                                                    )}
-                                                />
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <Label
-                                                    htmlFor={`rate_${index}`}
-                                                    className="text-xs"
-                                                    required
-                                                >
-                                                    {isFixed
-                                                        ? 'Amount'
-                                                        : 'Rate'}
-                                                </Label>
-                                                <Input
-                                                    id={`rate_${index}`}
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.0001"
-                                                    className="h-9"
-                                                    value={draft.rate}
-                                                    onChange={(event) =>
-                                                        updateLine(index, {
-                                                            rate: event.target
-                                                                .value,
-                                                        })
-                                                    }
-                                                    placeholder={rateUnitHint(
-                                                        draft.rate_type,
-                                                        row.rate_semantics,
-                                                    )}
-                                                    required
-                                                />
-                                                <p className="text-xs text-muted-foreground">
-                                                    {rateUnitHint(
-                                                        draft.rate_type,
-                                                        row.rate_semantics,
-                                                    )}
-                                                </p>
-                                                <InputError
-                                                    message={lineError(
-                                                        index,
-                                                        'rate',
-                                                    )}
-                                                />
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <p className="text-xs font-medium text-muted-foreground">
-                                                    Transporter Freight
-                                                </p>
-                                                <p
-                                                    className="flex h-9 items-center text-sm font-semibold tabular-nums"
-                                                    data-testid={`line_freight_${index}`}
-                                                >
-                                                    {money(freight)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <InputError
-                                message={form.errors.goods_lines}
-                                className="mt-2"
-                            />
-
-                            <div className="mt-4 space-y-2">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-medium">
-                                            Custom Amounts
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Additional payable (+) or
-                                            recoverable (−) adjustments — not
-                                            part of TDS basis
-                                        </p>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={addCustomAmountRow}
-                                    >
-                                        Add row
-                                    </Button>
-                                </div>
-                                {form.data.custom_amounts.length === 0 ? (
-                                    <p className="text-xs text-muted-foreground">
-                                        No Custom Amount rows — use Add row when
-                                        a surcharge or recovery applies.
-                                    </p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {form.data.custom_amounts.map(
-                                            (row, index) => (
-                                                <div
-                                                    key={`custom-${index}`}
-                                                    className="grid gap-2 rounded-lg border border-border bg-background p-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.6fr)_auto]"
-                                                >
-                                                    <div className="space-y-1">
-                                                        <Label
-                                                            htmlFor={`custom_description_${index}`}
-                                                            className="text-xs"
-                                                            required
-                                                        >
-                                                            Particulars
-                                                        </Label>
-                                                        <Input
-                                                            id={`custom_description_${index}`}
-                                                            value={
-                                                                row.description
-                                                            }
-                                                            onChange={(event) =>
-                                                                updateCustomAmount(
-                                                                    index,
-                                                                    {
-                                                                        description:
-                                                                            event
-                                                                                .target
-                                                                                .value,
-                                                                    },
-                                                                )
-                                                            }
-                                                            maxLength={255}
-                                                            placeholder="e.g. Loading charge"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <Label
-                                                            htmlFor={`custom_amount_row_${index}`}
-                                                            className="text-xs"
-                                                            required
-                                                        >
-                                                            Amount (+/−)
-                                                        </Label>
-                                                        <Input
-                                                            id={`custom_amount_row_${index}`}
-                                                            type="number"
-                                                            step="0.01"
-                                                            className="h-9"
-                                                            value={row.amount}
-                                                            onChange={(event) =>
-                                                                updateCustomAmount(
-                                                                    index,
-                                                                    {
-                                                                        amount: event
-                                                                            .target
-                                                                            .value,
-                                                                    },
-                                                                )
-                                                            }
-                                                            placeholder="+ / −"
-                                                        />
-                                                    </div>
-                                                    <div className="flex items-end">
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() =>
-                                                                removeCustomAmount(
-                                                                    index,
-                                                                )
-                                                            }
-                                                        >
-                                                            Remove
-                                                        </Button>
-                                                    </div>
+                                                        ])}{' '}
+                                                        actual ·{' '}
+                                                        {sumKgAsMtLabel([
+                                                            row.charged_weight ??
+                                                                row.actual_weight,
+                                                        ])}{' '}
+                                                        charged
+                                                    </p>
                                                 </div>
-                                            ),
-                                        )}
-                                    </div>
-                                )}
+
+                                                <div className="space-y-1">
+                                                    <Label
+                                                        htmlFor={`rate_type_${index}`}
+                                                        className="text-xs"
+                                                        required
+                                                    >
+                                                        Rate Type
+                                                    </Label>
+                                                    <select
+                                                        id={`rate_type_${index}`}
+                                                        className={SELECT_CLASS}
+                                                        value={draft.rate_type}
+                                                        onChange={(event) =>
+                                                            updateLine(index, {
+                                                                rate_type:
+                                                                    event.target
+                                                                        .value,
+                                                            })
+                                                        }
+                                                        required
+                                                    >
+                                                        {rateTypeOptions.map(
+                                                            (option) => (
+                                                                <option
+                                                                    key={
+                                                                        option.value
+                                                                    }
+                                                                    value={
+                                                                        option.value
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        option.label
+                                                                    }
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                    <InputError
+                                                        message={lineError(
+                                                            index,
+                                                            'rate_type',
+                                                        )}
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <Label
+                                                        htmlFor={`rate_${index}`}
+                                                        className="text-xs"
+                                                        required
+                                                    >
+                                                        {isFixed
+                                                            ? 'Amount'
+                                                            : 'Rate'}
+                                                    </Label>
+                                                    <Input
+                                                        id={`rate_${index}`}
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.0001"
+                                                        className="h-9"
+                                                        value={draft.rate}
+                                                        onChange={(event) =>
+                                                            updateLine(index, {
+                                                                rate: event
+                                                                    .target
+                                                                    .value,
+                                                            })
+                                                        }
+                                                        placeholder={rateUnitHint(
+                                                            draft.rate_type,
+                                                            row.rate_semantics,
+                                                        )}
+                                                        required
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {rateUnitHint(
+                                                            draft.rate_type,
+                                                            row.rate_semantics,
+                                                        )}
+                                                    </p>
+                                                    <InputError
+                                                        message={lineError(
+                                                            index,
+                                                            'rate',
+                                                        )}
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <p className="text-xs font-medium text-muted-foreground">
+                                                        Transporter Freight
+                                                    </p>
+                                                    <p
+                                                        className="flex h-9 items-center text-sm font-semibold tabular-nums"
+                                                        data-testid={`line_freight_${index}`}
+                                                    >
+                                                        {money(freight)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                                 <InputError
-                                    message={form.errors.custom_amounts}
+                                    message={form.errors.goods_lines}
+                                    className="mt-2"
                                 />
-                            </div>
 
-                            <div className="mt-3 space-y-1">
-                                <Label htmlFor="remarks">Remarks</Label>
-                                <Input
-                                    id="remarks"
-                                    value={form.data.remarks}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'remarks',
-                                            event.target.value,
-                                        )
-                                    }
-                                    maxLength={2000}
-                                    placeholder="Optional remarks for this hire"
-                                />
-                                <InputError message={form.errors.remarks} />
-                            </div>
+                                <div className="mt-4">
+                                    <LrfSummaryMetrics
+                                        items={[
+                                            {
+                                                name: 'TR Rate',
+                                                value: money(
+                                                    form.data.goods_lines[0]
+                                                        ?.rate,
+                                                ),
+                                            },
+                                            {
+                                                name: 'TDS',
+                                                value: tdsAmountLabel,
+                                            },
+                                            {
+                                                name: 'Balance',
+                                                value: formatInr(netPayable),
+                                                hero: true,
+                                            },
+                                        ]}
+                                    />
+                                </div>
+                            </LrfSection>
+                        </div>
 
-                            {isEdit ? (
-                                <div className="mt-3 space-y-1">
-                                    <Label htmlFor="edit_remark" required>
-                                        Edit Remark
-                                    </Label>
+                        {isEdit ? (
+                            <CustomAmountsSection
+                                rows={form.data.custom_amounts}
+                                total={customTotal}
+                                formError={form.errors.custom_amounts}
+                                onAdd={addCustomAmountRow}
+                                onChange={updateCustomAmount}
+                                onRemove={removeCustomAmount}
+                            />
+                        ) : null}
+
+                        <div data-testid="lorry-hire-section-optional-details">
+                            <LrfSection
+                                step={isEdit ? 4 : 3}
+                                title="Optional Details"
+                                description="Remarks for this hire"
+                                tone="optional"
+                            >
+                                <div className="space-y-1">
+                                    <Label htmlFor="remarks">Remark</Label>
                                     <Input
-                                        id="edit_remark"
-                                        value={form.data.edit_remark}
+                                        id="remarks"
+                                        value={form.data.remarks}
                                         onChange={(event) =>
                                             form.setData(
-                                                'edit_remark',
+                                                'remarks',
                                                 event.target.value,
                                             )
                                         }
                                         maxLength={2000}
-                                        placeholder="Why is this Lorry Hire being changed?"
-                                        aria-invalid={
-                                            Boolean(form.errors.edit_remark) ||
-                                            undefined
-                                        }
+                                        placeholder="Optional"
                                     />
-                                    <InputError
-                                        message={form.errors.edit_remark}
-                                    />
+                                    <InputError message={form.errors.remarks} />
                                 </div>
-                            ) : null}
-                        </LrfSection>
 
-                        <LrfSection
-                            step={3}
-                            title="Financial summary"
-                            description={
-                                isEdit
-                                    ? 'Effective freight, TDS, payable and the revised balance after existing payments'
-                                    : 'Transporter freight, applicable TDS and net payable'
-                            }
-                            tone="optional"
-                        >
-                            <LrfSummaryMetrics
-                                items={[
-                                    {
-                                        name: 'Transporter Freight',
-                                        value: formatInr(
-                                            financials.transporterFreight,
-                                        ),
-                                    },
-                                    ...(customTotal !== 0
-                                        ? [
-                                              {
-                                                  name: 'Custom Amounts',
-                                                  value: formatInr(customTotal),
-                                              },
-                                          ]
-                                        : []),
-                                    {
-                                        name: `Applicable TDS (${tdsPercentLabel})`,
-                                        value: tdsAmountLabel,
-                                    },
-                                    ...(isEdit && adjustmentsNet !== 0
-                                        ? [
-                                              {
-                                                  name: 'Freight Adjustments',
-                                                  value: formatInr(
-                                                      adjustmentsNet,
-                                                  ),
-                                              },
-                                          ]
-                                        : []),
-                                    {
-                                        name: 'Net Payable',
-                                        value: formatInr(netPayable),
-                                        hero: !isEdit,
-                                    },
-                                    ...(isEdit
-                                        ? [
-                                              {
-                                                  name: 'Paid / adjusted',
-                                                  value: money(
-                                                      hire.settled_amount,
-                                                  ),
-                                              },
-                                              {
-                                                  name: 'Revised Outstanding',
-                                                  value: formatInr(
-                                                      netPayable -
-                                                          Number(
-                                                              hire.settled_amount,
-                                                          ),
-                                                  ),
-                                                  hero: true,
-                                              },
-                                          ]
-                                        : []),
-                                ]}
-                            />
-                            {isEdit && hire.tds_locked_reason ? (
-                                <p className="mt-2 text-xs text-muted-foreground">
-                                    {hire.tds_locked_reason}
-                                </p>
-                            ) : tdsPreview?.explanation ? (
-                                <p className="mt-2 text-xs text-muted-foreground">
-                                    {tdsPreview.explanation}
-                                </p>
-                            ) : null}
-                            {isEdit && hire.has_unloading_adjustment ? (
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                    An unloading weight adjustment applies; the
-                                    final freight is confirmed on review.
-                                </p>
-                            ) : null}
-                        </LrfSection>
+                                {isEdit ? (
+                                    <div className="mt-3 space-y-1">
+                                        <Label htmlFor="edit_remark" required>
+                                            Edit Remark
+                                        </Label>
+                                        <Input
+                                            id="edit_remark"
+                                            value={form.data.edit_remark}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'edit_remark',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            maxLength={2000}
+                                            placeholder="Why is this Lorry Hire being changed?"
+                                            aria-invalid={
+                                                Boolean(
+                                                    form.errors.edit_remark,
+                                                ) || undefined
+                                            }
+                                        />
+                                        <InputError
+                                            message={form.errors.edit_remark}
+                                        />
+                                    </div>
+                                ) : null}
+                            </LrfSection>
+                        </div>
+
+                        <div data-testid="lorry-hire-section-financial-summary">
+                            <LrfSection
+                                step={isEdit ? 5 : 4}
+                                title="Financial summary"
+                                description={
+                                    isEdit
+                                        ? 'Effective freight, TDS, payable and the revised balance after existing payments'
+                                        : 'Transporter freight, applicable TDS and net payable'
+                                }
+                                tone="optional"
+                            >
+                                <LrfSummaryMetrics
+                                    items={[
+                                        {
+                                            name: 'Transporter Freight',
+                                            value: formatInr(
+                                                financials.transporterFreight,
+                                            ),
+                                        },
+                                        ...(customTotal !== 0
+                                            ? [
+                                                  {
+                                                      name: 'Custom Amounts',
+                                                      value: formatInr(
+                                                          customTotal,
+                                                      ),
+                                                  },
+                                              ]
+                                            : []),
+                                        {
+                                            name: `Applicable TDS (${tdsPercentLabel})`,
+                                            value: tdsAmountLabel,
+                                        },
+                                        ...(isEdit && adjustmentsNet !== 0
+                                            ? [
+                                                  {
+                                                      name: 'Freight Adjustments',
+                                                      value: formatInr(
+                                                          adjustmentsNet,
+                                                      ),
+                                                  },
+                                              ]
+                                            : []),
+                                        {
+                                            name: 'Net Payable',
+                                            value: formatInr(netPayable),
+                                            hero: !isEdit,
+                                        },
+                                        ...(isEdit
+                                            ? [
+                                                  {
+                                                      name: 'Paid / adjusted',
+                                                      value: money(
+                                                          hire.settled_amount,
+                                                      ),
+                                                  },
+                                                  {
+                                                      name: 'Revised Outstanding',
+                                                      value: formatInr(
+                                                          netPayable -
+                                                              Number(
+                                                                  hire.settled_amount,
+                                                              ),
+                                                      ),
+                                                      hero: true,
+                                                  },
+                                              ]
+                                            : []),
+                                    ]}
+                                />
+                                {isEdit && hire.tds_locked_reason ? (
+                                    <p className="mt-2 text-xs text-muted-foreground">
+                                        {hire.tds_locked_reason}
+                                    </p>
+                                ) : tdsPreview?.explanation ? (
+                                    <p className="mt-2 text-xs text-muted-foreground">
+                                        {tdsPreview.explanation}
+                                    </p>
+                                ) : null}
+                                {isEdit && hire.has_unloading_adjustment ? (
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        An unloading weight adjustment applies;
+                                        the final freight is confirmed on
+                                        review.
+                                    </p>
+                                ) : null}
+                            </LrfSection>
+                        </div>
 
                         <LrfActions>
                             <Button
