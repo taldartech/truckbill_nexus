@@ -12,18 +12,24 @@ import {
 } from '@/components/fb-detail';
 import {
     ArrowLeft,
+    Ban,
     ExternalLink,
     FileText,
     Pencil,
     Printer,
     Wallet,
 } from 'lucide-react';
+import { FreightAdjustmentEntry } from '@/components/broker/freight-adjustment-entry';
+import { DisplayDate } from '@/components/display-date';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { formatKgAsMt2, formatRate2 } from '@/lib/decimal-format';
 import { useMemo, useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type {
     FieldReview,
     FormConfirmationMode,
 } from '@/components/form-confirmation/types';
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -93,6 +99,10 @@ type Props = {
         negative_adjusted_amount?: string | null;
         remaining_payable?: string | null;
         reserved_voucher_amount?: string | null;
+        paid_voucher_amount?: string | null;
+        in_progress_voucher_amount?: string | null;
+        payee_type?: string | null;
+        payee_type_label?: string | null;
         goods_lines: GoodsLine[];
         custom_amounts: Array<{
             id: string;
@@ -155,6 +165,7 @@ type Props = {
         can_create_adjustment?: boolean;
         can_view_adjustment?: boolean;
         can_manage_delivery?: boolean;
+        can_correct_memo?: boolean;
         can_pay?: boolean;
         can_edit?: boolean;
     };
@@ -169,6 +180,7 @@ type Props = {
         edit?: string | null;
         print?: string;
         memo_print?: string | null;
+        memo_update?: string;
     };
 };
 
@@ -177,7 +189,7 @@ export default function LorryHireShow({
     cancelPreview,
     adjustments,
     revisions = [],
-    adjustmentTypeOptions: _adjustmentTypeOptions,
+    adjustmentTypeOptions,
     fixed_adjustments,
     delivery,
     permissions,
@@ -213,6 +225,10 @@ export default function LorryHireShow({
     const cancelForm = useForm({
         reason: '',
         settle_outstanding: true as boolean,
+    });
+    const memoForm = useForm({
+        memo_number: delivery.memo_number ?? '',
+        remark: '',
     });
 
     const openCancelConfirmation = () => {
@@ -292,7 +308,7 @@ export default function LorryHireShow({
             (sum, line) => sum + Number(line.loading_weight ?? 0),
             0,
         );
-        return kg > 0 ? `${(kg / 1000).toFixed(3)} MT` : '—';
+        return formatKgAsMt2(kg);
     }, [lorryHire.goods_lines]);
 
     const balanceDueNumber = Number(
@@ -326,16 +342,19 @@ export default function LorryHireShow({
                                 title={`Good Hire Information (${lorryHire.hire_number})`}
                                 badges={
                                     <>
-                                        <span
-                                            className={cn(
-                                                'rounded px-1.5 py-0.5 text-[10px] font-bold uppercase',
-                                                lorryHire.status === 'cancelled'
-                                                    ? 'bg-red-100 text-red-700'
-                                                    : 'bg-emerald-100 text-emerald-800',
-                                            )}
-                                        >
-                                            {lorryHire.status}
-                                        </span>
+                                        {lorryHire.status === 'cancelled' ? (
+                                            <span className="inline-flex items-center gap-1">
+                                                <Ban
+                                                    className="size-3.5 text-destructive"
+                                                    aria-hidden
+                                                />
+                                                <WorkspaceStatusBadge status="cancelled" />
+                                            </span>
+                                        ) : (
+                                            <WorkspaceStatusBadge
+                                                status={lorryHire.status}
+                                            />
+                                        )}
                                     </>
                                 }
                                 actions={
@@ -406,8 +425,12 @@ export default function LorryHireShow({
                                     <FbInfoItem
                                         label="GR Date"
                                         value={
-                                            lorryHire.lr_date ??
-                                            lorryHire.hire_date
+                                            <DisplayDate
+                                                value={
+                                                    lorryHire.lr_date ??
+                                                    lorryHire.hire_date
+                                                }
+                                            />
                                         }
                                     />
                                     <FbInfoItem
@@ -430,6 +453,12 @@ export default function LorryHireShow({
                                             lorryHire.tds_percent
                                                 ? `TDS ${lorryHire.tds_percent}%`
                                                 : undefined
+                                        }
+                                    />
+                                    <FbInfoItem
+                                        label="Payee Type"
+                                        value={
+                                            lorryHire.payee_type_label ?? '—'
                                         }
                                     />
                                     <FbInfoItem
@@ -664,6 +693,12 @@ export default function LorryHireShow({
                             ) : null}
 
                             <FbDetailCard title="Freight Adjustments">
+                                {permissions.can_create_adjustment ? (
+                                    <FreightAdjustmentEntry
+                                        storeUrl={urls.adjustment_store}
+                                        typeOptions={adjustmentTypeOptions}
+                                    />
+                                ) : null}
                                 {permissions.can_edit && urls.edit ? (
                                     <p className="border-b border-slate-100 px-4 py-3 text-sm text-muted-foreground">
                                         Detention, deviation, misc. expense,
@@ -775,6 +810,86 @@ export default function LorryHireShow({
                             </FbDetailCard>
 
                             <FbDetailCard title="Delivery / Memo / POD">
+                                {permissions.can_correct_memo &&
+                                delivery.memo_number &&
+                                urls.memo_update ? (
+                                    <form
+                                        className="space-y-3 border-b border-slate-100 px-4 py-3"
+                                        data-testid="memo-id-correction"
+                                        onSubmit={(event) => {
+                                            event.preventDefault();
+                                            memoForm.post(urls.memo_update!, {
+                                                preserveScroll: true,
+                                            });
+                                        }}
+                                    >
+                                        <p className="text-sm text-muted-foreground">
+                                            Correct the Memo ID after delivery.
+                                            Delivery status is unchanged.
+                                        </p>
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            <div className="space-y-1">
+                                                <Label
+                                                    htmlFor="memo_number_edit"
+                                                    required
+                                                >
+                                                    Memo ID
+                                                </Label>
+                                                <Input
+                                                    id="memo_number_edit"
+                                                    value={
+                                                        memoForm.data
+                                                            .memo_number
+                                                    }
+                                                    onChange={(event) =>
+                                                        memoForm.setData(
+                                                            'memo_number',
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                />
+                                                <InputError
+                                                    message={
+                                                        memoForm.errors
+                                                            .memo_number
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label
+                                                    htmlFor="memo_remark"
+                                                    required
+                                                >
+                                                    Audit remark
+                                                </Label>
+                                                <Input
+                                                    id="memo_remark"
+                                                    value={memoForm.data.remark}
+                                                    onChange={(event) =>
+                                                        memoForm.setData(
+                                                            'remark',
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                />
+                                                <InputError
+                                                    message={
+                                                        memoForm.errors.remark
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-end">
+                                            <Button
+                                                type="submit"
+                                                disabled={memoForm.processing}
+                                                variant="outline"
+                                            >
+                                                Update Memo ID
+                                            </Button>
+                                        </div>
+                                    </form>
+                                ) : null}
                                 <FbInfoGrid>
                                     <FbInfoItem
                                         label="LR status"
@@ -983,13 +1098,25 @@ export default function LorryHireShow({
                                             '0.00',
                                     },
                                     {
-                                        label: 'In-progress / reserved',
+                                        label: 'Paid amount',
+                                        value:
+                                            lorryHire.paid_voucher_amount ??
+                                            '—',
+                                    },
+                                    {
+                                        label: 'In Progress amount',
+                                        value:
+                                            lorryHire.in_progress_voucher_amount ??
+                                            '0.00',
+                                    },
+                                    {
+                                        label: 'Reserved (pending + in progress)',
                                         value:
                                             lorryHire.reserved_voucher_amount ??
                                             '0.00',
                                     },
                                     {
-                                        label: 'Remaining payable',
+                                        label: 'Available balance',
                                         value:
                                             lorryHire.remaining_payable ??
                                             lorryHire.outstanding_amount ??

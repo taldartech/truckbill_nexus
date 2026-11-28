@@ -57,6 +57,12 @@ trait PresentsLorryHireForm
                 'vehicle_owner_name' => $lorryReceipt->vehicle?->ownerParty?->name,
                 'loading_station' => $this->loadingStationLabel($lorryReceipt),
                 'unloading_station' => $this->unloadingStationLabel($lorryReceipt),
+                'payee_type' => $lorryReceipt->intended_payee_type,
+                'payee_type_label' => match ($lorryReceipt->intended_payee_type) {
+                    'owner' => 'Owner',
+                    'agency' => 'Agency',
+                    default => null,
+                },
             ],
             'goodsRows' => array_values($lorryReceipt->goodsRows->map(fn (LrGoodsRow $row): array => [
                 'id' => $row->id,

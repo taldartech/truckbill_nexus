@@ -321,9 +321,17 @@ class PartyController extends Controller
             ]);
         }
 
+        $declarationRaw = $roleAttrs['declaration'] ?? null;
+        $declarationReceived = $declarationRaw === null
+            ? null
+            : filter_var($declarationRaw, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
+
         return response()->json([
             'applicable_percent' => number_format((float) $result->applicableRate, 3, '.', ''),
             'explanation' => (string) $result->explanation,
+            'declaration_received' => $declarationReceived,
+            'party_name' => $party->name,
+            'party_edit_url' => route('branch.parties.edit', [$party], absolute: false),
         ]);
     }
 

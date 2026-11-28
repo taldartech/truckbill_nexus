@@ -113,7 +113,15 @@
 }
 
 .freight-bookings-index #freightBookingsTable tr.is-row-cancelled td {
-    opacity: 0.72;
+    background: rgba(239, 68, 68, 0.06);
+    color: rgb(127, 29, 29);
+}
+
+.freight-bookings-index
+    #freightBookingsTable
+    tr.is-row-cancelled
+    td:first-child {
+    box-shadow: inset 3px 0 0 rgb(220, 38, 38);
 }
 
 .freight-bookings-index #freightBookingsTable tr.is-row-delivered td {

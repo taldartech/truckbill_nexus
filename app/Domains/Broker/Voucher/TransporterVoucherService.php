@@ -407,6 +407,10 @@ final class TransporterVoucherService
                     throw new BrokerConflictException('Paid vouchers are terminal.');
                 }
 
+                if ($from === $to) {
+                    return $locked->fresh(['lorryHire']) ?? $locked;
+                }
+
                 $allowed = [];
                 if ($from === VoucherStatus::Pending) {
                     $allowed = [VoucherStatus::InProgress];

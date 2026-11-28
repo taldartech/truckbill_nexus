@@ -619,6 +619,10 @@ export default function LrForm({
     const [payeeConfirmOpen, setPayeeConfirmOpen] = useState(false);
     const suppressAgencyDefaultRef = useRef(false);
     const [payeeGateError, setPayeeGateError] = useState<string | null>(null);
+    const [payeeTdsMeta, setPayeeTdsMeta] = useState<{
+        declaration_received: boolean | null;
+        party_edit_url: string | null;
+    } | null>(null);
     const [headerQuickCreate, setHeaderQuickCreate] =
         useState<QuickCreatePartyRole | null>(null);
     const [goodsTypes, setGoodsTypes] = useState<NamedOption[]>(
@@ -905,10 +909,11 @@ export default function LrForm({
         const endpoint = urls.parties_tds_for_payee;
         if (!payeeId || !endpoint || !showPayeeRow) {
             setTdsPreviewLabel('—');
+            setPayeeTdsMeta(null);
             return;
         }
         const controller = new AbortController();
-        const timer = window.setTimeout(() => {
+        const loadPayeeTds = () => {
             const params = new URLSearchParams({ party_id: payeeId });
             void fetch(`${endpoint}?${params.toString()}`, {
                 headers: {
@@ -924,11 +929,18 @@ export default function LrForm({
                     }
                     const payload = (await response.json()) as {
                         applicable_percent?: string | null;
+                        declaration_received?: boolean | null;
+                        party_edit_url?: string | null;
                     };
                     const percent = payload.applicable_percent?.trim();
                     setTdsPreviewLabel(
                         percent && percent !== '' ? `${percent}%` : '—',
                     );
+                    setPayeeTdsMeta({
+                        declaration_received:
+                            payload.declaration_received ?? null,
+                        party_edit_url: payload.party_edit_url ?? null,
+                    });
                 })
                 .catch((error: unknown) => {
                     if (
@@ -939,7 +951,8 @@ export default function LrForm({
                     }
                     setTdsPreviewLabel('—');
                 });
-        }, 200);
+        };
+        const timer = window.setTimeout(loadPayeeTds, 200);
         return () => {
             controller.abort();
             window.clearTimeout(timer);
@@ -1047,7 +1060,14 @@ export default function LrForm({
         return {
             totalUnits: formatPackageCount(String(totalUnits)),
             totalGoodsValue: formatFixed(totalGoodsValue, 2),
-            ...freightTotals,
+            totalActual: formatFixed(Number(freightTotals.totalActual), 2),
+            totalCharged: formatFixed(Number(freightTotals.totalCharged), 2),
+            totalFreight: formatFixed(Number(freightTotals.totalFreight), 2),
+            totalAdditional: formatFixed(
+                Number(freightTotals.totalAdditional),
+                2,
+            ),
+            totalAmount: formatFixed(Number(freightTotals.totalAmount), 2),
         };
     }, [charges, goods]);
 
@@ -3564,6 +3584,11 @@ export default function LrForm({
                                     </LrfInnerPanel>
 
                                     <LrfSummaryMetrics
+                                        className={
+                                            mayViewFreight
+                                                ? 'lrf-summary-metrics--4'
+                                                : undefined
+                                        }
                                         items={[
                                             {
                                                 name: 'Weight (MT)',
@@ -3742,7 +3767,60 @@ export default function LrForm({
                                 ? (selectedVehicle?.owner_name ?? '—')
                                 : (agencyPayeeParty?.name ?? '—')
                         }
-                        payeeContact={agencyPayeeParty?.contact_number ?? null}
+                        payeeContact={
+                            intendedPayeeType === 'agency'
+                                ? (agencyPayeeParty?.contact_number ?? null)
+                                : null
+                        }
+                        declarationMissing={
+                            payeeTdsMeta?.declaration_received === false
+                        }
+                        partyEditUrl={payeeTdsMeta?.party_edit_url ?? null}
+                        onRefreshPayee={() => {
+                            const payeeId =
+                                intendedPayeeType === 'owner'
+                                    ? (selectedVehicle?.owner_party_id ??
+                                      intendedPayeePartyId)
+                                    : intendedPayeePartyId;
+                            const endpoint = urls.parties_tds_for_payee;
+                            if (!payeeId || !endpoint) {
+                                return;
+                            }
+                            const params = new URLSearchParams({
+                                party_id: payeeId,
+                            });
+                            void fetch(`${endpoint}?${params.toString()}`, {
+                                headers: {
+                                    Accept: 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                credentials: 'same-origin',
+                            })
+                                .then((response) => response.json())
+                                .then(
+                                    (payload: {
+                                        declaration_received?: boolean | null;
+                                        party_edit_url?: string | null;
+                                        applicable_percent?: string | null;
+                                    }) => {
+                                        setPayeeTdsMeta({
+                                            declaration_received:
+                                                payload.declaration_received ??
+                                                null,
+                                            party_edit_url:
+                                                payload.party_edit_url ?? null,
+                                        });
+                                        const percent =
+                                            payload.applicable_percent?.trim();
+                                        setTdsPreviewLabel(
+                                            percent && percent !== ''
+                                                ? `${percent}%`
+                                                : '—',
+                                        );
+                                    },
+                                )
+                                .catch(() => undefined);
+                        }}
                         onConfirm={() => {
                             if (payeeCandidateKey) {
                                 setConfirmedPayeeKey(payeeCandidateKey);

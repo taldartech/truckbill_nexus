@@ -926,6 +926,24 @@
     margin-top: 0;
 }
 
+@media (min-width: 992px) {
+    .lrf-summary-metrics--4 {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .lrf-summary-metrics--4 .lrf-metric {
+        flex: 1 1 0;
+        min-width: 5.5rem;
+    }
+
+    .lrf-summary-metrics--4 .lrf-metric__name,
+    .lrf-summary-metrics--4 .lrf-metric__val {
+        white-space: nowrap;
+    }
+}
+
 @media (max-width: 991px) {
     .lrf-summary-metrics--4 {
         grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -131,6 +131,8 @@ export type LorryHireFormProps = {
         vehicle_owner_name: string | null;
         loading_station: string | null;
         unloading_station: string | null;
+        payee_type?: string | null;
+        payee_type_label?: string | null;
     };
     payee: { id: string; name: string } | null;
     payeeBlockedReason: string | null;
@@ -527,6 +529,10 @@ export default function LorryHireForm({
                     value: dash(lorryReceipt.vehicle_registration),
                 },
                 { label: 'Payee', value: dash(payee?.name) },
+                {
+                    label: 'Payee Type',
+                    value: dash(lorryReceipt.payee_type_label),
+                },
                 { label: 'Route', value: route },
             ],
         },

@@ -25,7 +25,7 @@ type VoucherRow = {
     destination: string | null;
     created_at: string | null;
     next_status: string | null;
-    urls: { show: string };
+    urls: { show: string; status?: string };
 };
 
 type Props = {
@@ -58,6 +58,7 @@ export default function DailyPaymentsIndex({
         status: '',
         date: filters.date,
     });
+    const [rowProcessingId, setRowProcessingId] = useState<string | null>(null);
 
     const toggle = (id: string) => {
         setSelected((current) =>
@@ -234,9 +235,51 @@ export default function DailyPaymentsIndex({
                                                     status={row.status}
                                                 />
                                             </td>
-                                            <td>{row.created_at ?? '—'}</td>
+                                            <td className="text-nowrap tabular-nums">
+                                                {row.created_at ?? '—'}
+                                            </td>
                                             <td>
-                                                <div className="flex justify-center">
+                                                <div className="flex flex-nowrap items-center justify-center gap-1">
+                                                    {permissions.can_status &&
+                                                    row.next_status &&
+                                                    row.urls.status ? (
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-7 text-xs"
+                                                            disabled={
+                                                                rowProcessingId ===
+                                                                row.id
+                                                            }
+                                                            onClick={() => {
+                                                                setRowProcessingId(
+                                                                    row.id,
+                                                                );
+                                                                router.post(
+                                                                    row.urls
+                                                                        .status!,
+                                                                    {
+                                                                        status: row.next_status,
+                                                                    },
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                        onFinish:
+                                                                            () =>
+                                                                                setRowProcessingId(
+                                                                                    null,
+                                                                                ),
+                                                                    },
+                                                                );
+                                                            }}
+                                                        >
+                                                            Mark{' '}
+                                                            {row.next_status.replaceAll(
+                                                                '_',
+                                                                ' ',
+                                                            )}
+                                                        </Button>
+                                                    ) : null}
                                                     <AppIconAction
                                                         icon={Eye}
                                                         label="Open voucher"

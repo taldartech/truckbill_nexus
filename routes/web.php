@@ -324,6 +324,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/broker/lorry-hires/{lorryHire}/revision-preview', [LorryHireEditController::class, 'preview'])->name('branch.broker.lorry-hires.revision-preview');
             Route::put('/broker/lorry-hires/{lorryHire}', [LorryHireEditController::class, 'update'])->name('branch.broker.lorry-hires.update');
             Route::post('/broker/lorry-hires/{lorryHire}/cancel', [LorryHireController::class, 'cancel'])->name('branch.broker.lorry-hires.cancel');
+            Route::post('/broker/lorry-hires/{lorryHire}/memo-number', [LorryHireController::class, 'updateMemoNumber'])->name('branch.broker.lorry-hires.memo-update');
             Route::get('/broker/lorry-hires/{lorryHire}/adjustments', [BrokerAdjustmentController::class, 'index'])->name('branch.broker.lorry-hires.adjustments.index');
             Route::post('/broker/lorry-hires/{lorryHire}/adjustments', [BrokerAdjustmentController::class, 'store'])->name('branch.broker.lorry-hires.adjustments.store');
         });

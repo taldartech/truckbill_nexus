@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
     FbCompactTable,
@@ -12,6 +12,8 @@ import {
 import { ArrowLeft, Eye, FileText } from 'lucide-react';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { DisplayDate } from '@/components/display-date';
 
 type Props = {
     voucher: {
@@ -56,7 +58,10 @@ type Props = {
                 amount: string | null;
                 status: string;
                 is_current: boolean;
+                urls: { show: string };
             }>;
+            paid_voucher_amount?: string | null;
+            in_progress_voucher_amount?: string | null;
         } | null;
     };
     permissions: { can_status: boolean };
@@ -75,7 +80,7 @@ export default function VoucherShow({
     nextStatus,
     urls,
 }: Props) {
-    const statusForm = useForm({ status: nextStatus ?? '' });
+    const [statusProcessing, setStatusProcessing] = useState(false);
     const hire = voucher.lorry_hire;
     const outstandingNumber = Number(hire?.outstanding_amount ?? NaN);
     const balanceDue =
@@ -144,8 +149,12 @@ export default function VoucherShow({
                                     <FbInfoItem
                                         label="Date"
                                         value={
-                                            voucher.voucher_date ??
-                                            voucher.created_at
+                                            <DisplayDate
+                                                value={
+                                                    voucher.voucher_date ??
+                                                    voucher.created_at
+                                                }
+                                            />
                                         }
                                     />
                                     <FbInfoItem
@@ -207,11 +216,31 @@ export default function VoucherShow({
                                             value={hire.net_payable}
                                         />
                                         <FbInfoItem
-                                            label="Paid / Balance Due"
-                                            value={`${hire.paid_amount ?? '—'} / ${hire.balance_due ?? hire.outstanding_amount ?? '—'}`}
+                                            label="Paid amount"
+                                            value={
+                                                hire.paid_voucher_amount ??
+                                                hire.paid_amount ??
+                                                '—'
+                                            }
                                         />
                                         <FbInfoItem
-                                            label="In-progress / reserved"
+                                            label="In Progress amount"
+                                            value={
+                                                hire.in_progress_voucher_amount ??
+                                                '0.00'
+                                            }
+                                        />
+                                        <FbInfoItem
+                                            label="Available balance"
+                                            value={
+                                                hire.remaining_payable ??
+                                                hire.outstanding_amount ??
+                                                '—'
+                                            }
+                                            accent
+                                        />
+                                        <FbInfoItem
+                                            label="Reserved (pending + in progress)"
                                             value={
                                                 hire.reserved_voucher_amount ??
                                                 '0.00'
@@ -281,7 +310,12 @@ export default function VoucherShow({
                                             }
                                         >
                                             <td className="px-3 py-2 font-medium">
-                                                {row.voucher_number}
+                                                <Link
+                                                    href={row.urls.show}
+                                                    className="text-[#0f766e] hover:underline"
+                                                >
+                                                    {row.voucher_number}
+                                                </Link>
                                             </td>
                                             <td className="px-3 py-2">
                                                 {row.payment_type}
@@ -305,17 +339,29 @@ export default function VoucherShow({
                                         className="flex flex-wrap items-center gap-3 px-4 py-3"
                                         onSubmit={(event) => {
                                             event.preventDefault();
-                                            statusForm.post(urls.status);
+                                            if (
+                                                !nextStatus ||
+                                                statusProcessing
+                                            ) {
+                                                return;
+                                            }
+                                            setStatusProcessing(true);
+                                            router.post(
+                                                urls.status,
+                                                { status: nextStatus },
+                                                {
+                                                    preserveScroll: true,
+                                                    onFinish: () =>
+                                                        setStatusProcessing(
+                                                            false,
+                                                        ),
+                                                },
+                                            );
                                         }}
                                     >
-                                        <input
-                                            type="hidden"
-                                            name="status"
-                                            value={nextStatus}
-                                        />
                                         <Button
                                             type="submit"
-                                            disabled={statusForm.processing}
+                                            disabled={statusProcessing}
                                             className="bg-[#2FB36F] text-white hover:bg-[#279960]"
                                         >
                                             Mark as{' '}

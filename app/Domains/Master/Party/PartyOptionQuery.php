@@ -18,7 +18,7 @@ final class PartyOptionQuery
 
     /**
      * @param  PartyRoleType|list<PartyRoleType>  $roles
-     * @return list<array{id: string, name: string, short_name: string, city: string|null, state: string|null, city_id: string|null, state_id: string|null, contact_number: string|null}>
+     * @return list<array{id: string, name: string, short_name: string, city: string|null, state: string|null, city_id: string|null, state_id: string|null, contact_number: string|null, transporter_declaration_received?: bool|null}>
      */
     public function forRoles(
         Company $company,
@@ -40,6 +40,11 @@ final class PartyOptionQuery
                     ->whereNull('deleted_at')
                     ->whereNull('deactivated_at');
             })
+            ->with(['roles' => function ($roleQuery) use ($roleValues): void {
+                $roleQuery->whereIn('role', $roleValues)
+                    ->whereNull('deleted_at')
+                    ->whereNull('deactivated_at');
+            }])
             ->limit($limit);
 
         $parties = $this->search->apply($builder, $query ?? '')
@@ -48,7 +53,7 @@ final class PartyOptionQuery
         $options = [];
         $seen = [];
         foreach ($parties as $party) {
-            $options[] = $this->optionPayload($party);
+            $options[] = $this->optionPayload($party, $roleValues);
             $seen[$party->id] = true;
         }
 
@@ -62,10 +67,15 @@ final class PartyOptionQuery
                         ->whereNull('deleted_at')
                         ->whereNull('deactivated_at');
                 })
+                ->with(['roles' => function ($roleQuery) use ($roleValues): void {
+                    $roleQuery->whereIn('role', $roleValues)
+                        ->whereNull('deleted_at')
+                        ->whereNull('deactivated_at');
+                }])
                 ->first(['id', 'name', 'short_name', 'city', 'state', 'city_id', 'state_id', 'contact_number']);
 
             if ($selected !== null) {
-                array_unshift($options, $this->optionPayload($selected));
+                array_unshift($options, $this->optionPayload($selected, $roleValues));
             }
         }
 
@@ -85,11 +95,12 @@ final class PartyOptionQuery
     }
 
     /**
-     * @return array{id: string, name: string, short_name: string, city: string|null, state: string|null, city_id: string|null, state_id: string|null, contact_number: string|null}
+     * @param  list<string>  $roleValues
+     * @return array{id: string, name: string, short_name: string, city: string|null, state: string|null, city_id: string|null, state_id: string|null, contact_number: string|null, transporter_declaration_received?: bool|null}
      */
-    private function optionPayload(Party $party): array
+    private function optionPayload(Party $party, array $roleValues): array
     {
-        return [
+        $payload = [
             'id' => $party->id,
             'name' => $party->name,
             'short_name' => (string) $party->short_name,
@@ -99,5 +110,16 @@ final class PartyOptionQuery
             'city_id' => $party->city_id,
             'contact_number' => $party->contact_number,
         ];
+
+        if (in_array(PartyRoleType::Transporter->value, $roleValues, true)) {
+            $role = $party->roles->first();
+            $attrs = is_array($role?->role_attributes) ? $role->role_attributes : [];
+            $declaration = $attrs['declaration'] ?? null;
+            $payload['transporter_declaration_received'] = $declaration === null
+                ? null
+                : filter_var($declaration, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) ?? (bool) $declaration;
+        }
+
+        return $payload;
     }
 }

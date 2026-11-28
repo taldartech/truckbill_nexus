@@ -295,7 +295,10 @@ final class LorryHireCalculationService
      *     balance_due: numeric-string,
      *     negative_adjusted_amount: numeric-string,
      *     reserved_voucher_amount: numeric-string,
-     *     remaining_payable: numeric-string
+     *     remaining_payable: numeric-string,
+     *     paid_voucher_amount: numeric-string,
+     *     in_progress_voucher_amount: numeric-string,
+     *     pending_voucher_amount: numeric-string
      * }
      */
     public function summarize(LorryHire $hire): array
@@ -307,6 +310,9 @@ final class LorryHireCalculationService
         $customTotal = $this->customAmountsTotal($hire->customAmounts);
         $net = $this->netPayable($freight, $tds, $customTotal, $hire->adjustments);
         $outstanding = $this->outstandingAmount($net, $hire->vouchers, $hire->bookBalanceEntries);
+        $paid = $this->paidVoucherAmount($hire->vouchers);
+        $inProgress = $this->inProgressVoucherAmount($hire->vouchers);
+        $pending = $this->pendingVoucherAmount($hire->vouchers);
         $reserved = $this->reservedVoucherAmount($hire->vouchers);
         $remainingPayable = bcsub($outstanding, $reserved, 2);
         if (bccomp($remainingPayable, '0.00', 2) < 0) {
@@ -327,7 +333,58 @@ final class LorryHireCalculationService
             'negative_adjusted_amount' => $negativeAdjusted,
             'reserved_voucher_amount' => $reserved,
             'remaining_payable' => $remainingPayable,
+            'paid_voucher_amount' => $paid,
+            'in_progress_voucher_amount' => $inProgress,
+            'pending_voucher_amount' => $pending,
         ];
+    }
+
+    /**
+     * @param  Collection<int, TransporterVoucher>  $vouchers
+     * @return numeric-string
+     */
+    public function paidVoucherAmount(Collection $vouchers): string
+    {
+        $paid = '0.00';
+        foreach ($vouchers as $voucher) {
+            if ($voucher->status === VoucherStatus::Paid) {
+                $paid = bcadd($paid, $this->money($voucher->amount), 2);
+            }
+        }
+
+        return $paid;
+    }
+
+    /**
+     * @param  Collection<int, TransporterVoucher>  $vouchers
+     * @return numeric-string
+     */
+    public function inProgressVoucherAmount(Collection $vouchers): string
+    {
+        $total = '0.00';
+        foreach ($vouchers as $voucher) {
+            if ($voucher->status === VoucherStatus::InProgress) {
+                $total = bcadd($total, $this->money($voucher->amount), 2);
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * @param  Collection<int, TransporterVoucher>  $vouchers
+     * @return numeric-string
+     */
+    public function pendingVoucherAmount(Collection $vouchers): string
+    {
+        $total = '0.00';
+        foreach ($vouchers as $voucher) {
+            if ($voucher->status === VoucherStatus::Pending) {
+                $total = bcadd($total, $this->money($voucher->amount), 2);
+            }
+        }
+
+        return $total;
     }
 
     /**

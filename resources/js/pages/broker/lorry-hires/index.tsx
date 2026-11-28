@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Eye, Pencil } from 'lucide-react';
+import { Ban, Eye, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
@@ -14,6 +14,9 @@ import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useCrossPageSelection } from '@/hooks/use-cross-page-selection';
+import { DisplayDate } from '@/components/display-date';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { formatRate2, formatWeightMt2 } from '@/lib/decimal-format';
 
 type HireRow = {
     id: string;
@@ -553,13 +556,30 @@ export default function LorryHiresIndex({
                                                 </td>
                                             ) : null}
                                             <td className="text-center">
-                                                {row.lr_date ??
-                                                    row.hire_date ??
-                                                    row.created_at ??
-                                                    '—'}
+                                                <DisplayDate
+                                                    value={
+                                                        row.lr_date ??
+                                                        row.hire_date ??
+                                                        row.created_at
+                                                    }
+                                                />
                                             </td>
                                             <td className="font-medium">
-                                                {row.lr_number ?? '—'}
+                                                <div className="flex flex-col gap-1">
+                                                    <span>
+                                                        {row.lr_number ?? '—'}
+                                                    </span>
+                                                    {row.status ===
+                                                    'cancelled' ? (
+                                                        <span className="inline-flex items-center gap-1">
+                                                            <Ban
+                                                                className="size-3.5 text-destructive"
+                                                                aria-hidden
+                                                            />
+                                                            <WorkspaceStatusBadge status="cancelled" />
+                                                        </span>
+                                                    ) : null}
+                                                </div>
                                             </td>
                                             <td>
                                                 {row.billing_customer_name ??
@@ -583,18 +603,30 @@ export default function LorryHiresIndex({
                                             </td>
                                             <td>
                                                 {row.weight_mt
-                                                    ? `${row.weight_mt} MT`
+                                                    ? formatWeightMt2(
+                                                          row.weight_mt,
+                                                      )
                                                     : '—'}
                                             </td>
-                                            <td>{row.rate ?? '—'}</td>
-                                            <td>{row.freight_total ?? '—'}</td>
+                                            <td>
+                                                {row.rate
+                                                    ? formatRate2(row.rate)
+                                                    : '—'}
+                                            </td>
+                                            <td>
+                                                {row.freight_total
+                                                    ? formatRate2(
+                                                          row.freight_total,
+                                                      )
+                                                    : '—'}
+                                            </td>
                                             <td
                                                 className={`text-end tabular-nums ${balanceClass(row.outstanding_amount)}`}
                                             >
                                                 {row.outstanding_amount ?? '—'}
                                             </td>
                                             <td>
-                                                <div className="btn-action-row">
+                                                <div className="btn-action-row flex-nowrap whitespace-nowrap">
                                                     <AppIconAction
                                                         icon={Eye}
                                                         label="Open lorry hire"

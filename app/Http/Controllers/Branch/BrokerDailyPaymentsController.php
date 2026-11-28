@@ -124,13 +124,20 @@ class BrokerDailyPaymentsController extends Controller
      */
     private function dailyPaymentVoucherRow(TransporterVoucher $row, bool $maySeeFreight): array
     {
-        return array_merge($this->registerRows->row($row, $maySeeFreight), [
+        $payload = $this->registerRows->row($row, $maySeeFreight);
+
+        return [
+            ...$payload,
             'next_status' => match ($row->status) {
                 VoucherStatus::Pending => VoucherStatus::InProgress->value,
                 VoucherStatus::InProgress => VoucherStatus::Paid->value,
                 VoucherStatus::Paid => null,
             },
-        ]);
+            'urls' => [
+                ...($payload['urls'] ?? []),
+                'status' => route('branch.broker.vouchers.status', [$row], absolute: false),
+            ],
+        ];
     }
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void

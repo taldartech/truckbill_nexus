@@ -457,8 +457,8 @@ export default function LorryReceiptsIndex({
                                                         {statusText}
                                                     </span>
                                                 </td>
-                                                <td className="sticky right-0 z-10 bg-white shadow-[-6px_0_8px_-8px_rgba(15,23,42,0.25)]">
-                                                    <div className="flex flex-wrap items-center justify-center gap-1">
+                                                <td className="sticky right-0 z-10 w-[1%] bg-white whitespace-nowrap shadow-[-6px_0_8px_-8px_rgba(15,23,42,0.25)]">
+                                                    <div className="flex flex-nowrap items-center justify-center gap-1">
                                                         <AppIconAction
                                                             icon={Eye}
                                                             label={`View Bilty ${row.lr_number}`}

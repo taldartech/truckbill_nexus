@@ -390,3 +390,11 @@ Before completing any implementation task: review the full diff; remove unused i
 - Success and failure feedback uses the shared Sonner toaster (`useFlashToast` + `flash.success` / `flash.error` / `flash.toast`); inline field validation is never replaced by per-field toasts.
 - Vehicle registration numbers normalize to uppercase without separators and validate through `IndianVehicleRegistration` / `IndianVehicleRegistrationRule` on every create and update path (Vehicle Master, quick add, HTTP validation). Supported patterns include standard state series and Bharat `##BH####AA` series.
 - Lorry Hire create/edit shows read-only customer freight from the linked Bilty and an estimated freight profitability summary (customer freight minus transporter net payable) only when the viewer may see freight amounts.
+
+## 44. Broker operational presentation and voucher balances (Permanent)
+
+- Bilty goods summary badges use the four-column flex row at desktop widths (Weight, Units, Freight, Total). Good Hires register balance column shows **available** (`remaining_payable`) after paid and in-progress voucher reservations.
+- Pay To confirmation integrates a non-blocking TDS declaration warning with **Update declaration** (Party edit) and **Confirm Payee**; Payee Type on Lorry Hire is read from the persisted Bilty `intended_payee_type`.
+- Voucher balances: `paid_voucher_amount`, `in_progress_voucher_amount`, `reserved_voucher_amount`, and `remaining_payable` are authoritative from `LorryHireCalculationService::summarize()`. Status transitions use idempotent same-state no-ops; voucher show/history refresh via Inertia POST without full page reload.
+- Memo ID may be corrected after delivery with mandatory audit remark (`BrokerDeliveryService::correctMemoNumber`) without reversing delivery. Freight adjustment entry drafts clear only after successful save.
+- Weight, quantity, rate and money presentation use shared `decimal-format` / `formatInr` helpers at two decimal places for display (canonical storage unchanged). Date cells use `text-nowrap` via `DisplayDate`.

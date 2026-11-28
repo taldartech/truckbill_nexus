@@ -364,11 +364,13 @@ export function LrfDriverTdsSummary({
 
 export function LrfSummaryMetrics({
     items,
+    className,
 }: {
     items: Array<{ name: string; value: string; hero?: boolean }>;
+    className?: string;
 }) {
     return (
-        <div className="lrf-summary-metrics">
+        <div className={cn('lrf-summary-metrics', className)}>
             {items.map((item) => (
                 <div
                     key={item.name}

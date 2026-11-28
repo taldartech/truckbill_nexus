@@ -3,6 +3,7 @@
 namespace App\Domains\Broker\Presentation;
 
 use App\Domains\Broker\Enums\LorryHireStatus;
+use App\Domains\Broker\LorryHire\LorryHireCalculationService;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Models\LorryHire;
 use App\Models\LorryReceipt;
@@ -15,6 +16,7 @@ final class LorryHireRegisterPresenter
 {
     public function __construct(
         private readonly FreightAmountPresentation $freightPresentation,
+        private readonly LorryHireCalculationService $calculations,
     ) {}
 
     /**
@@ -29,10 +31,10 @@ final class LorryHireRegisterPresenter
     ): array {
         $weightKg = $hire->goodsLines->sum(fn ($line): float => (float) ($line->loading_weight ?? 0));
         $primaryLine = $hire->goodsLines->first();
-        $outstanding = number_format((float) ($hire->outstanding_amount ?? 0), 2, '.', '');
+        $summary = $this->calculations->summarize($hire);
         $payable = $canCreateVoucher
             && $hire->status !== LorryHireStatus::Cancelled
-            && bccomp($outstanding, '0.00', 2) === 1;
+            && bccomp($summary['remaining_payable'], '0.00', 2) === 1;
         $receipt = $hire->lorryReceipt;
         $memoNumber = $receipt?->delivery?->memo_number;
         $memoPending = $canAssignMemo
@@ -62,13 +64,21 @@ final class LorryHireRegisterPresenter
             'from_station_name' => $receipt !== null ? $this->loadingStationLabel($receipt) : null,
             'to_station_name' => $receipt !== null ? $this->unloadingStationLabel($receipt) : null,
             'weight_mt' => $weightKg > 0
-                ? number_format($weightKg / 1000, 3, '.', '')
+                ? number_format($weightKg / 1000, 2, '.', '')
                 : null,
             'rate' => $primaryLine !== null
-                ? $this->freightPresentation->presentAmount($primaryLine->rate, $maySeeFreight)
+                ? $this->freightPresentation->presentAmount(
+                    number_format((float) ($primaryLine->rate ?? 0), 2, '.', ''),
+                    $maySeeFreight,
+                )
                 : null,
-            'freight_total' => $this->freightPresentation->presentAmount($hire->freight_total, $maySeeFreight),
-            'outstanding_amount' => $this->freightPresentation->presentAmount($hire->outstanding_amount, $maySeeFreight),
+            'freight_total' => $this->freightPresentation->presentAmount(
+                number_format((float) ($hire->freight_total ?? 0), 2, '.', ''),
+                $maySeeFreight,
+            ),
+            'outstanding_amount' => $this->freightPresentation->presentAmount($summary['remaining_payable'], $maySeeFreight),
+            'paid_voucher_amount' => $this->freightPresentation->presentAmount($summary['paid_voucher_amount'], $maySeeFreight),
+            'in_progress_voucher_amount' => $this->freightPresentation->presentAmount($summary['in_progress_voucher_amount'], $maySeeFreight),
             'created_at' => $hire->created_at?->format('d-m-Y'),
             'payable' => $payable,
             'lorry_receipt_id' => $hire->lorry_receipt_id,

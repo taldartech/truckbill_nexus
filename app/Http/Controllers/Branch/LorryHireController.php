@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Broker\Adjustment\BrokerAdjustmentService;
+use App\Domains\Broker\Delivery\BrokerDeliveryService;
 use App\Domains\Broker\Enums\BrokerAdjustmentType;
 use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
@@ -55,6 +56,7 @@ class LorryHireController extends Controller
         private readonly BrokerAdjustmentService $adjustments,
         private readonly FreightAmountPresentation $freightPresentation,
         private readonly LorryHireRegisterPresenter $registerRows,
+        private readonly BrokerDeliveryService $deliveries,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -404,6 +406,7 @@ class LorryHireController extends Controller
                 'memo_print' => filled($deliveryPanel['memo_number'] ?? null)
                     ? route('branch.broker.lorry-hires.memo-print', [$lorryHire], absolute: false)
                     : null,
+                'memo_update' => route('branch.broker.lorry-hires.memo-update', [$lorryHire], absolute: false),
             ],
         ]);
     }
@@ -441,6 +444,39 @@ class LorryHireController extends Controller
                 'net_payable_after' => $this->freightPresentation->presentAmount($revision->after['net_payable'] ?? null, $maySeeFreight),
             ])
             ->all());
+    }
+
+    public function updateMemoNumber(
+        Request $request,
+        LorryHire $lorryHire,
+        Company $company,
+        Branch $branch,
+    ): RedirectResponse {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertLorryHire($lorryHire, $company, $branch);
+
+        $validated = $request->validate([
+            'memo_number' => ['required', 'string', 'max:64'],
+            'remark' => ['required', 'string', 'max:2000'],
+        ], [
+            'remark.required' => 'Enter an audit remark for this Memo / POD correction.',
+        ]);
+
+        try {
+            $this->deliveries->correctMemoNumber($lorryHire, $actor, $validated);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (BrokerAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (BrokerConflictException $e) {
+            throw ValidationException::withMessages(['memo_number' => $e->getMessage()]);
+        } catch (BrokerDomainException $e) {
+            throw ValidationException::withMessages(['memo_number' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.broker.lorry-hires.show', [$lorryHire])
+            ->with('success', 'Memo / POD number updated.');
     }
 
     public function cancel(
@@ -531,9 +567,11 @@ class LorryHireController extends Controller
     private function adjustmentDeliveryPermissions(User $actor, Company $company, Branch $branch): array
     {
         return [
-            'can_create_adjustment' => false,
+            'can_create_adjustment' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_ADJUSTMENT_CREATE, $company, $branch),
             'can_view_adjustment' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_ADJUSTMENT_VIEW, $company, $branch),
             'can_manage_delivery' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_DELIVERY_MANAGE, $company, $branch),
+            'can_correct_memo' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_EDIT, $company, $branch)
+                || $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_DELIVERY_MANAGE, $company, $branch),
         ];
     }
 
@@ -621,6 +659,12 @@ class LorryHireController extends Controller
             'consignee_name' => $lr?->consignee?->name,
             'vehicle_registration' => $hire->vehicle?->registration_number,
             'transporter_name' => $hire->transporter?->name,
+            'payee_type' => $lr?->intended_payee_type,
+            'payee_type_label' => match ($lr?->intended_payee_type) {
+                'owner' => 'Owner',
+                'agency' => 'Agency',
+                default => null,
+            },
             'remarks' => $hire->remarks,
             'cancelled_at' => $hire->cancelled_at?->format('d-m-Y H:i'),
             'cancellation_remark' => $hire->cancellation_remark,
@@ -634,6 +678,8 @@ class LorryHireController extends Controller
             'negative_adjusted_amount' => $this->freightPresentation->presentAmount($summary['negative_adjusted_amount'], $maySeeFreight),
             'remaining_payable' => $this->freightPresentation->presentAmount($summary['remaining_payable'], $maySeeFreight),
             'reserved_voucher_amount' => $this->freightPresentation->presentAmount($summary['reserved_voucher_amount'], $maySeeFreight),
+            'paid_voucher_amount' => $this->freightPresentation->presentAmount($summary['paid_voucher_amount'], $maySeeFreight),
+            'in_progress_voucher_amount' => $this->freightPresentation->presentAmount($summary['in_progress_voucher_amount'], $maySeeFreight),
             'customer_freight_total' => $this->freightPresentation->presentAmount($lr?->freight_total, $maySeeFreight),
             'gross_freight_margin' => $this->grossFreightMargin(
                 $maySeeFreight && $lr !== null ? (string) $lr->freight_total : null,

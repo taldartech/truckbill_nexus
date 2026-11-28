@@ -94,6 +94,9 @@ final class LorryHireService
                 'vehicle',
                 'transporter',
                 'goodsLines',
+                'vouchers',
+                'bookBalanceEntries',
+                'adjustments',
             ])
             ->orderByDesc('created_at');
 

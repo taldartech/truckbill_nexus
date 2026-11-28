@@ -20,6 +20,7 @@ use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Models\Branch;
 use App\Models\BrokerDelivery;
 use App\Models\Company;
+use App\Models\LorryHire;
 use App\Models\LorryReceipt;
 use App\Models\User;
 use App\Support\Audit\AuditAction;
@@ -466,6 +467,70 @@ final class BrokerDeliveryService
         if ($receipt->status !== LrStatus::InProgress) {
             throw new BrokerConflictException('Lorry Receipt must be In Progress (with Lorry Hire) before delivery.');
         }
+    }
+
+    /**
+     * Correct Memo / POD number after delivery without reversing delivery or creating a new POD operation.
+     *
+     * @param  array{memo_number: string, remark: string}  $payload
+     */
+    public function correctMemoNumber(LorryHire $hire, User $actor, array $payload): BrokerDelivery
+    {
+        $company = Company::query()->findOrFail($hire->company_id);
+        $branch = Branch::query()->findOrFail($hire->branch_id);
+
+        $this->ensureTenantMatches($company, $branch);
+        $this->assertBrokerEntitled($company);
+
+        if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_EDIT, $company, $branch)
+            && ! $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_DELIVERY_MANAGE, $company, $branch)) {
+            throw new BrokerAuthorizationException('Not authorized to correct Memo / POD numbers.');
+        }
+
+        $memoNumber = trim($payload['memo_number']);
+        if ($memoNumber === '') {
+            throw ValidationException::withMessages(['memo_number' => 'Enter the Memo / POD number.']);
+        }
+
+        return $this->auditedTransaction->run(function () use ($hire, $company, $branch, $memoNumber, $payload): BrokerDelivery {
+            return $this->withTenant($company, $branch, function () use ($hire, $company, $memoNumber, $payload): BrokerDelivery {
+                $lockedHire = LorryHire::query()->whereKey($hire->id)->lockForUpdate()->firstOrFail();
+                $receipt = LorryReceipt::query()
+                    ->whereKey($lockedHire->lorry_receipt_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($receipt->status === LrStatus::Invoiced) {
+                    throw new BrokerConflictException('This Bilty is invoiced. Memo / POD cannot be changed from this screen.');
+                }
+
+                $delivery = $receipt->delivery;
+                if ($delivery === null || ! filled($delivery->memo_number)) {
+                    throw new BrokerConflictException('Memo / POD can only be corrected after delivery has been recorded.');
+                }
+
+                if ($delivery->memo_number === $memoNumber) {
+                    throw ValidationException::withMessages(['memo_number' => 'Enter a different Memo / POD number or cancel the correction.']);
+                }
+
+                $customerId = (string) $receipt->billing_customer_party_id;
+                $this->assertMemoNumberAvailable($company, $memoNumber, $customerId);
+
+                $before = $delivery->only(['memo_number']);
+                $delivery->forceFill(['memo_number' => $memoNumber])->save();
+
+                $this->audit->write(
+                    AuditAction::Updated,
+                    BrokerDelivery::class,
+                    $delivery->id,
+                    remark: trim($payload['remark']),
+                    before: $before,
+                    after: $delivery->only(['memo_number']),
+                );
+
+                return $delivery->fresh() ?? $delivery;
+            });
+        });
     }
 
     private function assertBelongsToBranch(LorryReceipt $receipt, Company $company, Branch $branch): void

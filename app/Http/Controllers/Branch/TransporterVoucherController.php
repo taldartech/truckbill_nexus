@@ -498,8 +498,13 @@ class TransporterVoucherController extends Controller
                         'amount' => $this->freightPresentation->presentAmount($row->amount, $maySeeFreight),
                         'status' => $row->status->value,
                         'is_current' => $row->id === $voucher->id,
+                        'urls' => [
+                            'show' => route('branch.broker.vouchers.show', [$row], absolute: false),
+                        ],
                     ])->values()->all()
                     : [],
+                'paid_voucher_amount' => $this->freightPresentation->presentAmount($summary['paid_voucher_amount'], $maySeeFreight),
+                'in_progress_voucher_amount' => $this->freightPresentation->presentAmount($summary['in_progress_voucher_amount'], $maySeeFreight),
             ] : null,
         ];
     }

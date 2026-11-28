@@ -7,6 +7,9 @@ type Props = {
     payToType: 'owner' | 'agency';
     payeeName: string;
     payeeContact?: string | null;
+    declarationMissing?: boolean;
+    partyEditUrl?: string | null;
+    onRefreshPayee?: () => void;
     onConfirm: () => void;
     onCancel: () => void;
 };
@@ -19,6 +22,9 @@ export function PayeeConfirmationDialog({
     payToType,
     payeeName,
     payeeContact,
+    declarationMissing = false,
+    partyEditUrl,
+    onRefreshPayee,
     onConfirm,
     onCancel,
 }: Props) {
@@ -35,6 +41,32 @@ export function PayeeConfirmationDialog({
             confirmLabel="Confirm Payee"
             onConfirm={onConfirm}
             onCancel={onCancel}
+            secondaryConfirmLabel={
+                declarationMissing && partyEditUrl
+                    ? 'Update declaration'
+                    : undefined
+            }
+            onSecondaryConfirm={
+                declarationMissing && partyEditUrl
+                    ? () => {
+                          const popup = window.open(
+                              partyEditUrl,
+                              'truckbill-party-edit',
+                              'noopener',
+                          );
+                          if (!popup) {
+                              window.location.assign(partyEditUrl);
+                              return;
+                          }
+                          const timer = window.setInterval(() => {
+                              if (popup.closed) {
+                                  window.clearInterval(timer);
+                                  onRefreshPayee?.();
+                              }
+                          }, 600);
+                      }
+                    : undefined
+            }
             sections={[
                 {
                     title: 'Truck & Payee',
@@ -48,6 +80,25 @@ export function PayeeConfirmationDialog({
                             : []),
                     ],
                 },
+                ...(declarationMissing
+                    ? [
+                          {
+                              title: 'TDS declaration',
+                              tone: 'destructive' as const,
+                              layout: 'full' as const,
+                              fields: [
+                                  {
+                                      label: 'Declaration received',
+                                      value: 'No',
+                                  },
+                                  {
+                                      label: 'Notice',
+                                      value: 'TDS declaration has not been received from this transporter. Please update the declaration details if available. You may continue after confirming the Payee.',
+                                  },
+                              ],
+                          },
+                      ]
+                    : []),
             ]}
         />
     );

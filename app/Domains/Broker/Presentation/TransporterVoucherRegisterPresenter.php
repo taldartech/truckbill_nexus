@@ -2,6 +2,7 @@
 
 namespace App\Domains\Broker\Presentation;
 
+use App\Domains\Broker\Enums\VoucherStatus;
 use App\Models\LorryReceipt;
 use App\Models\TransporterVoucher;
 use App\Support\Presentation\FreightAmountPresentation;
@@ -39,10 +40,21 @@ final class TransporterVoucherRegisterPresenter
             'source' => $receipt !== null ? $this->loadingStationLabel($receipt) : null,
             'destination' => $receipt !== null ? $this->unloadingStationLabel($receipt) : null,
             'created_at' => $voucher->created_at?->format('d-m-Y H:i'),
+            'next_status' => $this->nextStatus($voucher->status),
             'urls' => [
                 'show' => route('branch.broker.vouchers.show', [$voucher], absolute: false),
+                'status' => route('branch.broker.vouchers.status', [$voucher], absolute: false),
             ],
         ];
+    }
+
+    private function nextStatus(VoucherStatus $current): ?string
+    {
+        return match ($current) {
+            VoucherStatus::Pending => VoucherStatus::InProgress->value,
+            VoucherStatus::InProgress => VoucherStatus::Paid->value,
+            VoucherStatus::Paid => null,
+        };
     }
 
     private function loadingStationLabel(LorryReceipt $lorryReceipt): ?string
