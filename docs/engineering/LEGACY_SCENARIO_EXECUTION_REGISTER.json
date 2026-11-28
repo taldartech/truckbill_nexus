@@ -1,13 +1,13 @@
 {
     "version": 2,
     "description": "Full legacy scenario classification. Rebuild via php scripts/build-legacy-scenario-outcomes.php; preserve explicit PASS rows.",
-    "generated_at": "2026-11-28T14:32:42+00:00",
+    "generated_at": "2026-11-28T15:15:29+00:00",
     "nexus_head": "01119ddef513c9c861ea33a4ae300ef39dbee542",
     "totals": {
         "scenarios": 1490,
         "SUPERSEDED_APPROVED": 2,
-        "PASS": 34,
-        "MAPPED_NOT_EXECUTED": 1355,
+        "PASS": 50,
+        "MAPPED_NOT_EXECUTED": 1339,
         "NOT_APPLICABLE": 38,
         "DEFERRED_PHASE_10": 61
     },
@@ -774,27 +774,23 @@
         },
         {
             "legacy_scenario_id": "LEG-BRO-00137",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00137"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00138",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00138"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00139",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00139"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00140",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00140"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00141",
@@ -810,9 +806,8 @@
         },
         {
             "legacy_scenario_id": "LEG-BRO-00143",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00143"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00144",
@@ -840,9 +835,8 @@
         },
         {
             "legacy_scenario_id": "LEG-BRO-00148",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00148"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00149",
@@ -906,39 +900,33 @@
         },
         {
             "legacy_scenario_id": "LEG-BRO-00159",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00159"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00160",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00160"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00161",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00161"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00162",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00162"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00163",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00163"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00164",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00164"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00165",
@@ -954,27 +942,23 @@
         },
         {
             "legacy_scenario_id": "LEG-BRO-00167",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00167"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00168",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00168"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00169",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00169"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00170",
-            "status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
-            "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00170"
         },
         {
             "legacy_scenario_id": "LEG-BRO-00171",

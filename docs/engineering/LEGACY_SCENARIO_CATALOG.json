@@ -1,6 +1,6 @@
 {
     "generated_at": "2026-11-28T12:11:38+00:00",
-    "nexus_head": "01119ddef513c9c861ea33a4ae300ef39dbee542",
+    "nexus_head": "90e83d08b56a52755a1ffba5592fc17f82b5ce9d",
     "scenarios": [
         {
             "id": "LEG-BRO-00001",
@@ -1464,8 +1464,8 @@
             "legacy_identifier": "test_store_creates_booking_and_links_lr",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00137",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1475,8 +1475,8 @@
             "legacy_identifier": "test_store_uses_document_calculations_and_defaults",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00138",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1486,8 +1486,8 @@
             "legacy_identifier": "test_store_prevents_duplicate_booking_for_same_lr",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00139",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1497,8 +1497,8 @@
             "legacy_identifier": "test_moderator_can_create_booking",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00140",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1530,8 +1530,8 @@
             "legacy_identifier": "test_update_does_not_change_tds_when_submission_date_passed",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00143",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1585,8 +1585,8 @@
             "legacy_identifier": "test_update_uses_document_formula_for_freight_booking_amounts",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00148",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1706,8 +1706,8 @@
             "legacy_identifier": "test_update_positive_custom_amount_increases_balance",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00159",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1717,8 +1717,8 @@
             "legacy_identifier": "test_update_negative_custom_amount_decreases_balance",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00160",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1728,8 +1728,8 @@
             "legacy_identifier": "test_update_multiple_custom_amounts_sum_correctly",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00161",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1739,8 +1739,8 @@
             "legacy_identifier": "test_update_removed_custom_amount_row_no_longer_affects_balance",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00162",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1750,8 +1750,8 @@
             "legacy_identifier": "test_update_custom_amounts_are_additive_with_detention",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00163",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1761,8 +1761,8 @@
             "legacy_identifier": "test_voucher_payment_recalc_respects_custom_amounts",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00164",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1794,8 +1794,8 @@
             "legacy_identifier": "test_memo_uses_user_provided_date_and_time",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00167",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1805,8 +1805,8 @@
             "legacy_identifier": "test_memo_defaults_to_current_time_when_date_not_provided",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00168",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1816,8 +1816,8 @@
             "legacy_identifier": "test_memo_date_cannot_be_in_the_future",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00169",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -1827,8 +1827,8 @@
             "legacy_identifier": "test_bulk_memo_records_provided_date_or_current_time",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "MAPPED_NOT_EXECUTED",
-            "nexus_test": "tests/Feature/Broker/LorryHireServiceTest.php, tests/Feature/Broker/LorryHireEditTest.php, tests/Feature/LorryHireIndependentFreightTest.php",
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerFreightFeatureParityTest.php \u2014 LEG-BRO-00170",
             "notes": "Coverage: adapted; adapted Nexus tests \u2014 execute batch then promote via promote-legacy-scenario-pass.php."
         },
         {
@@ -16294,5 +16294,5 @@
     "totals": {
         "scenarios": 1490
     },
-    "scenario_execution_synced_at": "2026-11-28T14:32:42+00:00"
+    "scenario_execution_synced_at": "2026-11-28T15:15:29+00:00"
 }

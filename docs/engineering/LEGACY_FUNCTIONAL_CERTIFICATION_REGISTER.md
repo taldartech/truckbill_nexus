@@ -6,7 +6,7 @@
 **Register updated HEAD:** _(see git after broker cancellation / UI batch)_  
 **Scenario catalog:** `docs/engineering/LEGACY_SCENARIO_CATALOG.json` (**1,490** scenarios)  
 **Scenario outcomes (explicit):** `docs/engineering/LEGACY_SCENARIO_EXECUTION_REGISTER.json` → rebuild `php scripts/build-legacy-scenario-outcomes.php`, promote `php scripts/promote-legacy-scenario-pass.php`, sync `php scripts/sync-legacy-scenario-execution.php`
-**Execution (2026-11-28, legacy-derived Pest batch):** 1,490 scenarios classified — **0 UNMAPPED**. **PASS** 34 · **MAPPED_NOT_EXECUTED** 1,355 · **NOT_APPLICABLE** 38 · **SUPERSEDED_APPROVED** 2 · **DEFERRED_PHASE_10** 61. This batch: adapted `FreightBookingTest`, `NumberHelpersTest`, `MoneyTest`, and `FreightBookingAmountVerifierTest` into `tests/LegacyParity/Broker/*` (28 tests green); fixed mis-linked **LEG-BRO-00027**; aligned TDS ceil rounding, Indian number formatting, dispatch balance-as-on-date, and amount verifier.  
+**Execution (2026-11-28):** 1,490 scenarios — **0 UNMAPPED**. **PASS** 50 · **MAPPED_NOT_EXECUTED** 1,339 · **NOT_APPLICABLE** 38 · **SUPERSEDED_APPROVED** 2 · **DEFERRED_PHASE_10** 61. Latest group: `FreightBookingTest` financial, custom-amount, reservation and memo-date assertions in `LegacyBrokerFreightFeatureParityTest` (12 tests, 16 scenarios).  
 **Batch runner log:** `docs/engineering/LEGACY_CERTIFICATION_EXECUTION.json`  
 **Authoritative legacy paths (read-only):** `legacy/truckbill_{broker,ownfleet,partload,admin}`  
 **Machine inventory:** `docs/engineering/LEGACY_TEST_INVENTORY.json` (generated via `php scripts/inventory-legacy-tests.php`)
