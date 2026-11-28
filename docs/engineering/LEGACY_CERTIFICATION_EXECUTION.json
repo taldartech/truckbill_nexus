@@ -687,8 +687,199 @@
                 "duration_ms": 47071
             },
             "stderr_tail": ""
+        },
+        {
+            "stage": "3-broker",
+            "exit_code": 0,
+            "duration_ms": 152686,
+            "nexus_files": [
+                "tests/Feature/Broker/BrokerInvoiceServiceTest.php",
+                "tests/Feature/Broker/DeliveryAndAdjustmentTest.php",
+                "tests/Feature/Broker/DriverMasterAndCapabilityTest.php",
+                "tests/Feature/Broker/HireRegisterAndPayoutExportTest.php",
+                "tests/Feature/Broker/LinkedBiltyGroupServiceTest.php",
+                "tests/Feature/Broker/LorryHireCancellationTest.php",
+                "tests/Feature/Broker/LorryHireEditTest.php",
+                "tests/Feature/Broker/LorryHirePayableOnlyFilterTest.php",
+                "tests/Feature/Broker/LorryHireServiceTest.php",
+                "tests/Feature/Broker/MemoPodHttpTest.php",
+                "tests/Feature/Broker/TransporterBookBalanceManagementTest.php",
+                "tests/Feature/Broker/VoucherServiceTest.php",
+                "tests/Feature/Financial/FinancialInvariantsTest.php",
+                "tests/Feature/LorryHireIndependentFreightTest.php",
+                "tests/Feature/Phase4/LorryReceiptServiceTest.php",
+                "tests/Feature/PoCriticalBusinessRulesCorrectionTest.php",
+                "tests/Feature/UnifiedBiltyWorkflowTest.php",
+                "tests/Feature/VoucherPaymentHttpTest.php",
+                "tests/LegacyParity/Broker/LegacyBrokerCustomerFreightCalculationTest.php",
+                "tests/LegacyParity/Broker/LegacyBrokerHireFinancialScenariosTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 162,
+                "passed": 162,
+                "assertions": 857,
+                "duration_ms": 151818
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "1-admin-owner",
+            "exit_code": 1,
+            "duration_ms": 69895,
+            "nexus_files": [
+                "tests/Feature/CrmLeadManagementTest.php",
+                "tests/Feature/CrmSupportTicketTest.php",
+                "tests/Feature/InvitationLifecycleTest.php",
+                "tests/Feature/OwnerBranchAdministrationTest.php",
+                "tests/Feature/OwnerBranchNavigationShellTest.php",
+                "tests/Feature/OwnerGlobalPanelTest.php",
+                "tests/Feature/OwnerGlobalUserCreateTest.php",
+                "tests/Feature/OwnerPanelManagementTest.php",
+                "tests/Feature/OwnerPanelSessionIndependenceTest.php",
+                "tests/Feature/OwnershipTransferTest.php",
+                "tests/Feature/PermissionMasterTest.php",
+                "tests/Feature/Rbac/InternalRolePermissionBoundaryTest.php",
+                "tests/Feature/Rbac/OwnerOperationalPermissionHttpTest.php",
+                "tests/Feature/Rbac/SubscriptionRoleCombinationTest.php",
+                "tests/Feature/SessionWorkspaceRoutingTest.php",
+                "tests/Feature/Subscription/BrokerActivationAndEntitlementMatrixTest.php",
+                "tests/Feature/Subscription/SubscriptionCatalogueAdministrationTest.php",
+                "tests/Feature/SubscriptionBillingAndRbacIntegrationTest.php",
+                "tests/Feature/SubscriptionPricingTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "failed",
+                "tests": 139,
+                "passed": 138,
+                "assertions": 1897,
+                "duration_ms": 68905,
+                "failed": 1,
+                "failures": [
+                    {
+                        "test": "P\\Tests\\Feature\\SubscriptionBillingAndRbacIntegrationTest::__pest_evaluable_simplified_subscription_purchase__prorated_upgrade__accounting_add_on__immutable_gst_invoices_and_idempotent_callbacks",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/tests/Feature/SubscriptionBillingAndRbacIntegrationTest.php",
+                        "line": 360,
+                        "message": "Failed asserting that false is true."
+                    }
+                ],
+                "warnings": 3,
+                "warning_details": []
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "2-masters",
+            "exit_code": 0,
+            "duration_ms": 64232,
+            "nexus_files": [
+                "tests/Feature/BranchMasterIsolationTest.php",
+                "tests/Feature/Broker/DriverMasterAndCapabilityTest.php",
+                "tests/Feature/Broker/TransporterBookBalanceManagementTest.php",
+                "tests/Feature/GeographyMasterEnforcementTest.php",
+                "tests/Feature/GeographyMasterTest.php",
+                "tests/Feature/Master/TyreLayoutMasterTest.php",
+                "tests/Feature/MasterCompanyVisibilityTest.php",
+                "tests/Feature/MasterDataBatchBTest.php",
+                "tests/Feature/PartyMasterTest.php",
+                "tests/Feature/PartyOptionQueryTest.php",
+                "tests/Feature/PartySelectorEligibilityTest.php",
+                "tests/Feature/Phase3MastersUiTest.php",
+                "tests/Feature/Phase5/VehicleOwnershipClassificationTest.php",
+                "tests/Feature/Station/StationQuickCreateTest.php",
+                "tests/Feature/VehicleOptionsEndpointTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 76,
+                "passed": 76,
+                "assertions": 728,
+                "duration_ms": 63514
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "4-ownfleet",
+            "exit_code": 0,
+            "duration_ms": 67772,
+            "nexus_files": [
+                "tests/Feature/EntitlementAndDriverWorkflowTest.php",
+                "tests/Feature/Phase5/OwnFleetNoFreightViewTest.php",
+                "tests/Feature/Phase5/OwnFleetTripAllocationTest.php",
+                "tests/Feature/Phase5/OwnFleetTripCancelDeleteTest.php",
+                "tests/Feature/Phase5/OwnFleetTripExpenseTest.php",
+                "tests/Feature/Phase5/OwnFleetTripFoundationTest.php",
+                "tests/Feature/Phase5/OwnFleetTripInvoiceChargesEditTest.php",
+                "tests/Feature/Phase5/OwnFleetTripInvoicePaymentTest.php",
+                "tests/Feature/Phase5/OwnFleetTripInvoiceTest.php",
+                "tests/Feature/Phase5/OwnFleetTripLifecycleTest.php",
+                "tests/Feature/Phase5/OwnFleetTripLrDeliveryContractTest.php",
+                "tests/Feature/Phase5/OwnFleetTripMovementCorrectionTest.php",
+                "tests/Feature/Phase5/VehicleOwnershipClassificationTest.php",
+                "tests/Feature/TripExpensesWorkspaceTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 59,
+                "passed": 59,
+                "assertions": 494,
+                "duration_ms": 67146
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "5-partload",
+            "exit_code": 0,
+            "duration_ms": 25459,
+            "nexus_files": [
+                "tests/Feature/Partload/PartloadChallanServiceTest.php",
+                "tests/Feature/Partload/PartloadInTransitTest.php",
+                "tests/Feature/Partload/PartloadMainChallanServiceTest.php",
+                "tests/Feature/Partload/PartloadPendingDeliveryTest.php",
+                "tests/Feature/Partload/PartloadPendingLoadingTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 9,
+                "passed": 9,
+                "assertions": 45,
+                "duration_ms": 24691
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "6-accounting",
+            "exit_code": 0,
+            "duration_ms": 47774,
+            "nexus_files": [
+                "tests/Feature/Accounting/AccountingAddonLifecycleAndReconciliationTest.php",
+                "tests/Feature/Accounting/AccountingDayBookPostingTest.php",
+                "tests/Feature/Accounting/AccountingFinancialStatementsTest.php",
+                "tests/Feature/Accounting/AccountingFoundationTest.php",
+                "tests/Feature/Accounting/AccountingWorkspaceGatewayTest.php",
+                "tests/Feature/Accounting/AccountingWorkspaceTest.php",
+                "tests/Feature/Accounting/FundTransferServiceTest.php",
+                "tests/Feature/Accounting/GlLedgerQuickCreateTest.php",
+                "tests/Feature/Accounting/OpeningBalanceHttpTest.php",
+                "tests/Feature/Accounting/OpeningBalanceServiceTest.php",
+                "tests/Feature/Accounting/OperationalPostingBridgeTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 25,
+                "passed": 25,
+                "assertions": 287,
+                "duration_ms": 47112
+            },
+            "stderr_tail": ""
         }
     ],
-    "updated_at": "2026-11-28T12:41:27+00:00",
-    "nexus_head": "3d87e815ce371a6cabffacdf8dded559933b5e6f"
+    "updated_at": "2026-11-28T14:19:13+00:00",
+    "nexus_head": "e8982d071a8df8165770e7e9cf1b101c3ddb29e4"
 }

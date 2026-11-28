@@ -299,6 +299,42 @@ test('cancel settle yes restores consumed adjust in advance to book', function (
         ->and((string) $restore->amount)->toBe('600.00');
 });
 
+test('cancel settle yes transfers only paid pump voucher amount to book', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = brokerCreateLorryHire($ctx);
+
+    $voucher = app(TransporterVoucherService::class)->createForLorryHire($hire, $ctx['member'], [
+        'amount' => '900.00',
+        'payment_type' => VoucherPaymentType::Advance->value,
+        'payment_mode' => VoucherPaymentMode::PaidToPump->value,
+        'pump_reference' => 'Shell Nadiad',
+    ]);
+    $voucher = app(TransporterVoucherService::class)->transitionStatus(
+        $voucher->fresh(),
+        $ctx['member'],
+        VoucherStatus::InProgress,
+    );
+    app(TransporterVoucherService::class)->transitionStatus(
+        $voucher->fresh(),
+        $ctx['member'],
+        VoucherStatus::Paid,
+    );
+
+    app(LorryHireCancellationService::class)->cancel($hire->fresh(), $ctx['member'], [
+        'reason' => 'Pump settlement',
+        'settle_outstanding' => true,
+    ]);
+
+    $entry = TransporterBookBalanceEntry::query()
+        ->where('source_type', TransporterBookBalanceService::SOURCE_LORRY_HIRE_CANCEL)
+        ->where('source_id', $hire->id)
+        ->first();
+
+    expect($entry)->not->toBeNull()
+        ->and((string) $entry->amount)->toBe('900.00');
+});
+
 test('cancel soft-deletes in progress voucher reservations', function () {
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);

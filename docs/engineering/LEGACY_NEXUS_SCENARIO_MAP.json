@@ -21,7 +21,10 @@
         {
             "legacy_ids_prefix": "LEG-ADM-",
             "legacy_file_contains": "legacy/truckbill_admin/tests/Feature/ControlPlane/CustomerOnboardingProvisioningTest.php",
-            "nexus_tests": ["tests/Feature/OwnerGlobalPanelTest.php", "tests/Feature/InvitationLifecycleTest.php"],
+            "nexus_tests": [
+                "tests/Feature/OwnerGlobalPanelTest.php",
+                "tests/Feature/InvitationLifecycleTest.php"
+            ],
             "coverage": "adapted"
         },
         {
@@ -45,13 +48,19 @@
         {
             "legacy_ids_prefix": "LEG-BRO-",
             "legacy_file": "legacy/truckbill_broker/tests/Unit/Services/FreightBookingAmountVerifierTest.php",
-            "nexus_tests": ["tests/LegacyParity/Broker/LegacyBrokerHireFinancialScenariosTest.php", "tests/Feature/Financial/FinancialInvariantsTest.php"],
+            "nexus_tests": [
+                "tests/LegacyParity/Broker/LegacyBrokerHireFinancialScenariosTest.php",
+                "tests/Feature/Financial/FinancialInvariantsTest.php"
+            ],
             "coverage": "partial"
         },
         {
             "legacy_ids_prefix": "LEG-BRO-",
             "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/Voucher/VoucherPaymentTest.php",
-            "nexus_tests": ["tests/Feature/Broker/VoucherServiceTest.php", "tests/Feature/VoucherPaymentHttpTest.php"],
+            "nexus_tests": [
+                "tests/Feature/Broker/VoucherServiceTest.php",
+                "tests/Feature/VoucherPaymentHttpTest.php"
+            ],
             "coverage": "adapted"
         },
         {
@@ -67,13 +76,18 @@
         {
             "legacy_ids_prefix": "LEG-BRO-",
             "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/LR/LorryReceiptTest.php",
-            "nexus_tests": ["tests/Feature/Phase4/LorryReceiptServiceTest.php", "tests/Feature/UnifiedBiltyWorkflowTest.php"],
+            "nexus_tests": [
+                "tests/Feature/Phase4/LorryReceiptServiceTest.php",
+                "tests/Feature/UnifiedBiltyWorkflowTest.php"
+            ],
             "coverage": "adapted"
         },
         {
             "legacy_ids_prefix": "LEG-BRO-",
             "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/Invoice/",
-            "nexus_tests": ["tests/Feature/Broker/BrokerInvoiceServiceTest.php"],
+            "nexus_tests": [
+                "tests/Feature/Broker/BrokerInvoiceServiceTest.php"
+            ],
             "coverage": "adapted"
         },
         {
@@ -86,9 +100,109 @@
         {
             "legacy_ids_prefix": "LEG-BRO-",
             "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/Master/TransporterMasterTest.php",
-            "nexus_tests": ["tests/Feature/PartyMasterTest.php", "tests/Feature/PartyRoleAttributesTest.php"],
+            "nexus_tests": [
+                "tests/Feature/PartyMasterTest.php",
+                "tests/Feature/PartyRoleAttributesTest.php"
+            ],
             "coverage": "adapted",
             "superseded": ["NX-01 unified Party"]
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/Payments/",
+            "nexus_tests": [
+                "tests/Feature/Broker/VoucherServiceTest.php",
+                "tests/Feature/Broker/LorryHireCancellationTest.php"
+            ],
+            "coverage": "adapted"
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/Reports/",
+            "nexus_tests": [
+                "tests/Feature/Broker/HireRegisterAndPayoutExportTest.php",
+                "tests/Feature/Broker/BrokerInvoiceServiceTest.php"
+            ],
+            "coverage": "partial"
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/LR/LorryReceiptDeleteCascadeTest.php",
+            "nexus_tests": [
+                "tests/Feature/Phase4/LorryReceiptServiceTest.php",
+                "tests/Feature/Broker/LorryHireCancellationTest.php"
+            ],
+            "coverage": "adapted"
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file_contains": "legacy/truckbill_broker/tests/Unit/Models/FreightBookingTest.php",
+            "nexus_tests": [
+                "tests/Feature/Broker/LorryHireServiceTest.php",
+                "tests/Feature/Broker/LorryHireEditTest.php"
+            ],
+            "coverage": "partial"
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/Console/",
+            "nexus_tests": [],
+            "coverage": "partial",
+            "notes": "Legacy console correction — NOT_APPLICABLE at scenario level via build script."
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file_contains": "legacy/truckbill_broker/tests/Unit/Services/TallyAccountingTest.php",
+            "nexus_tests": [
+                "tests/Feature/Accounting/OperationalPostingBridgeTest.php"
+            ],
+            "coverage": "adapted"
+        },
+        {
+            "legacy_ids_prefix": "LEG-ADM-",
+            "legacy_file_contains": "legacy/truckbill_admin/tests/Feature/Auth/",
+            "nexus_tests": ["tests/Feature/Auth/", "tests/Feature/Rbac/"],
+            "coverage": "adapted"
+        },
+        {
+            "legacy_ids_prefix": "LEG-ADM-",
+            "legacy_file_contains": "legacy/truckbill_admin/tests/Feature/InternalUsers/",
+            "nexus_tests": [
+                "tests/Feature/OwnerGlobalUserCreateTest.php",
+                "tests/Feature/Rbac/InternalRolePermissionBoundaryTest.php"
+            ],
+            "coverage": "adapted"
+        },
+        {
+            "legacy_ids_prefix": "LEG-ADM-",
+            "legacy_file_contains": "legacy/truckbill_admin/tests/Feature/Company/",
+            "nexus_tests": [
+                "tests/Feature/OwnerBranchAdministrationTest.php",
+                "tests/Feature/OwnerGlobalPanelTest.php"
+            ],
+            "coverage": "adapted"
+        },
+        {
+            "legacy_ids_prefix": "LEG-OFO-",
+            "legacy_file_contains": "legacy/truckbill_ownfleet/tests/Feature/Api/Fuel",
+            "nexus_tests": [
+                "tests/Feature/Phase5/OwnFleetFuelAndExpenseTest.php"
+            ],
+            "coverage": "partial"
+        },
+        {
+            "legacy_ids_prefix": "LEG-OFO-",
+            "legacy_file_contains": "legacy/truckbill_ownfleet/tests/Feature/Api/FastTag",
+            "nexus_tests": ["tests/Feature/Phase5/OwnFleetFastTagTest.php"],
+            "coverage": "partial"
+        },
+        {
+            "legacy_ids_prefix": "LEG-OFO-",
+            "legacy_file_contains": "legacy/truckbill_ownfleet/tests/Feature/Api/DriverSettlement",
+            "nexus_tests": [
+                "tests/Feature/Phase5/OwnFleetDriverSettlementTest.php"
+            ],
+            "coverage": "partial"
         },
         {
             "legacy_ids_prefix": "LEG-OFO-",
@@ -102,13 +216,19 @@
         {
             "legacy_ids_prefix": "LEG-PAR-",
             "legacy_file_contains": "legacy/truckbill_partload/tests/Feature/Bilty",
-            "nexus_tests": ["tests/Feature/Phase4/LorryReceiptServiceTest.php", "tests/Feature/Partload/PartloadPendingLoadingTest.php"],
+            "nexus_tests": [
+                "tests/Feature/Phase4/LorryReceiptServiceTest.php",
+                "tests/Feature/Partload/PartloadPendingLoadingTest.php"
+            ],
             "coverage": "partial"
         },
         {
             "legacy_ids_prefix": "LEG-PAR-",
             "legacy_file_contains": "legacy/truckbill_partload/tests/Feature/Accounting/",
-            "nexus_tests": ["tests/Feature/Accounting/OperationalPostingBridgeTest.php", "tests/Feature/Accounting/AccountingFoundationTest.php"],
+            "nexus_tests": [
+                "tests/Feature/Accounting/OperationalPostingBridgeTest.php",
+                "tests/Feature/Accounting/AccountingFoundationTest.php"
+            ],
             "coverage": "partial"
         }
     ],
@@ -167,11 +287,7 @@
             "tests/Feature/TripExpensesWorkspaceTest.php",
             "tests/Feature/EntitlementAndDriverWorkflowTest.php"
         ],
-        "5-partload": [
-            "tests/Feature/Partload"
-        ],
-        "6-accounting": [
-            "tests/Feature/Accounting"
-        ]
+        "5-partload": ["tests/Feature/Partload"],
+        "6-accounting": ["tests/Feature/Accounting"]
     }
 }

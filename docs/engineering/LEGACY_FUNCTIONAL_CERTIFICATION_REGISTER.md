@@ -5,7 +5,8 @@
 **Prior certification HEAD:** `a61a308` (adjustment migration batch)  
 **Register updated HEAD:** _(see git after broker cancellation / UI batch)_  
 **Scenario catalog:** `docs/engineering/LEGACY_SCENARIO_CATALOG.json` (**1,490** scenarios)  
-**Scenario outcomes (explicit):** `docs/engineering/LEGACY_SCENARIO_EXECUTION_REGISTER.json` → sync via `php scripts/sync-legacy-scenario-execution.php`  
+**Scenario outcomes (explicit):** `docs/engineering/LEGACY_SCENARIO_EXECUTION_REGISTER.json` → rebuild `php scripts/build-legacy-scenario-outcomes.php`, promote `php scripts/promote-legacy-scenario-pass.php`, sync `php scripts/sync-legacy-scenario-execution.php`
+**Classification (2026-11-28, HEAD after alignment batch):** 1,490 scenarios classified — **0 UNMAPPED**. **PASS** 21 · **MAPPED_NOT_EXECUTED** 1,368 · **NOT_APPLICABLE** 38 · **SUPERSEDED_APPROVED** 2 · **DEFERRED_PHASE_10** 61. Module Nexus batches (MySQL `nexus_test`) re-run: stages 1–6 **all green** (broker 162 tests).  
 **Batch runner log:** `docs/engineering/LEGACY_CERTIFICATION_EXECUTION.json`  
 **Authoritative legacy paths (read-only):** `legacy/truckbill_{broker,ownfleet,partload,admin}`  
 **Machine inventory:** `docs/engineering/LEGACY_TEST_INVENTORY.json` (generated via `php scripts/inventory-legacy-tests.php`)
