@@ -46,6 +46,12 @@ Persona smokes (`roles/customer/*.smoke.spec.ts`) skip unless `E2E_REQUIRE_DEMO=
 
 When **Demo Logistics Alpha** is missing from the dev database, `php artisan e2e:ensure-broker-journey` (Playwright global setup) can run `LocalDemoWorkspaceSeeder` once if `E2E_ALLOW_DEMO_SEED=1` and `LOCAL_DEMO_PASSWORD` is set — it does not reset the database or overwrite user password hashes.
 
+**Branch entry:** Owner Branches requires the **Enter this branch?** confirmation before the workspace context POST. Helpers in `tests/e2e/fixtures/branch-entry.ts` follow that flow (no raw fetch bypass).
+
+**Browsers:** Global setup ensures `~/Library/Caches/ms-playwright` exists and defaults to `PLAYWRIGHT_USE_SYSTEM_CHROME=1` when bundled Chromium is not installed. Run `npx playwright install chromium` only when you need Playwright-managed browsers.
+
+**Database:** Playwright hits the **development** database via `e2e:ensure-broker-journey`. If `.env` points at `nexus_test`, set `E2E_DEV_DATABASE=nexus` (or your dev schema). The command refuses to seed or write fixtures into PHPUnit databases unless `E2E_FORCE_TEST_DATABASE=1`.
+
 ## CI
 
 GitHub Actions installs Chromium and runs `npm run test:e2e:smoke` after the app build.

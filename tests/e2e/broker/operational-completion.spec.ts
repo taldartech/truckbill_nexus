@@ -15,7 +15,7 @@ test.describe('Operational UX completion', () => {
         test.setTimeout(180_000);
         await loginAndEnterBrokerBranch(page);
 
-        await page.goto(page.url().replace(/\/broker.*$/, '/broker/vouchers'));
+        await page.goto('/broker/vouchers');
         await expect(
             page.getByTestId('voucher-payments-register'),
         ).toBeVisible();
@@ -39,9 +39,12 @@ test.describe('Operational UX completion', () => {
         test.setTimeout(120_000);
         await loginAndEnterBrokerBranch(page);
 
-        await page.goto(
-            page.url().replace(/\/broker.*$/, '/broker/lorry-hires'),
-        );
-        await expect(page.getByLabel('Payable only')).toBeVisible();
+        await page.goto('/broker/lorry-hires');
+        await expect(page.getByTestId('good-hires-register')).toBeVisible({
+            timeout: 20_000,
+        });
+        await expect(
+            page.getByRole('checkbox', { name: /Payable balance/i }),
+        ).toBeVisible();
     });
 });

@@ -116,7 +116,7 @@ test.describe('Broker legacy UI screenshots (Nexus)', () => {
         await page
             .locator('#voucher_payment_mode')
             .selectOption({ label: 'Bank' });
-        await page.getByLabel('Bank Account').click();
+        await page.locator('#voucher_bank_cash_account_id-trigger').click();
         await page.waitForTimeout(300);
         await page.screenshot({
             path: path.join(
@@ -125,7 +125,9 @@ test.describe('Broker legacy UI screenshots (Nexus)', () => {
             ),
             fullPage: false,
         });
-        await page.keyboard.press('Escape');
+        await voucherModal
+            .getByRole('button', { name: /^Close$/i })
+            .click();
         await voucherModal.waitFor({ state: 'hidden' });
 
         const memoCheckbox = page

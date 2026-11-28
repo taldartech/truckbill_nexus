@@ -15,6 +15,7 @@ use App\Domains\Consignment\Exceptions\LorryReceiptConflictException;
 use App\Domains\Consignment\Exceptions\LorryReceiptDomainException;
 use App\Domains\Consignment\LorryReceiptService;
 use App\Domains\Rbac\PermissionCodes;
+use App\Models\BankCashAccount;
 use App\Models\LorryHire;
 use App\Models\TransporterBookBalanceEntry;
 use App\Models\TransporterVoucher;
@@ -23,6 +24,7 @@ use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
 use Database\Seeders\TdsReferenceRulesSeeder;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 require_once __DIR__.'/../../Support/BrokerLorryHireHelpers.php';
 
@@ -213,6 +215,109 @@ test('delivered lr cancel remains blocked after hire cancelled', function () {
 
     expect(fn () => app(LorryReceiptService::class)->cancel($lr->fresh(), $ctx['member'], 'Too late'))
         ->toThrow(LorryReceiptDomainException::class);
+});
+
+test('cancel settle yes transfers only paid bank voucher amount to book', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = brokerCreateLorryHire($ctx);
+
+    $account = BankCashAccount::query()->create([
+        'company_id' => $ctx['company']->id,
+        'branch_id' => $ctx['branch']->id,
+        'name' => 'Cancel Test Bank',
+        'account_kind' => 'bank',
+        'is_active' => true,
+    ]);
+
+    $voucher = app(TransporterVoucherService::class)->createForLorryHire($hire, $ctx['member'], [
+        'amount' => '1800.00',
+        'payment_type' => VoucherPaymentType::Advance->value,
+        'payment_mode' => VoucherPaymentMode::Bank->value,
+        'bank_cash_account_id' => $account->id,
+    ]);
+    $voucher = app(TransporterVoucherService::class)->transitionStatus(
+        $voucher->fresh(),
+        $ctx['member'],
+        VoucherStatus::InProgress,
+    );
+    app(TransporterVoucherService::class)->transitionStatus(
+        $voucher->fresh(),
+        $ctx['member'],
+        VoucherStatus::Paid,
+    );
+
+    app(LorryHireCancellationService::class)->cancel($hire->fresh(), $ctx['member'], [
+        'reason' => 'Bank settlement',
+        'settle_outstanding' => true,
+    ]);
+
+    $entry = TransporterBookBalanceEntry::query()
+        ->where('source_type', TransporterBookBalanceService::SOURCE_LORRY_HIRE_CANCEL)
+        ->where('source_id', $hire->id)
+        ->first();
+
+    expect($entry)->not->toBeNull()
+        ->and((string) $entry->amount)->toBe('1800.00');
+});
+
+test('cancel settle yes restores consumed adjust in advance to book', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = brokerCreateLorryHire($ctx);
+
+    app(TransporterBookBalanceService::class)->createSignedEntry($ctx['company'], $ctx['branch'], $ctx['member'], [
+        'transporter_party_id' => $hire->transporter_party_id,
+        'amount' => '2000.00',
+        'entry_type' => BookBalanceEntryType::AdvanceAdjustment->value,
+        'source_type' => 'test_seed',
+        'source_id' => (string) Str::uuid(),
+    ]);
+
+    $voucher = app(TransporterVoucherService::class)->createForLorryHire($hire, $ctx['member'], [
+        'amount' => '600.00',
+        'payment_type' => VoucherPaymentType::Advance->value,
+        'payment_mode' => VoucherPaymentMode::AdjustInAdvance->value,
+    ]);
+    app(TransporterVoucherService::class)->transitionStatus(
+        $voucher->fresh(),
+        $ctx['member'],
+        VoucherStatus::Paid,
+    );
+
+    app(LorryHireCancellationService::class)->cancel($hire->fresh(), $ctx['member'], [
+        'reason' => 'Restore advance',
+        'settle_outstanding' => true,
+    ]);
+
+    $restore = TransporterBookBalanceEntry::query()
+        ->where('source_type', TransporterBookBalanceService::SOURCE_LORRY_HIRE_CANCEL_ADVANCE)
+        ->where('source_id', $hire->id)
+        ->first();
+
+    expect($restore)->not->toBeNull()
+        ->and((string) $restore->amount)->toBe('600.00');
+});
+
+test('cancel soft-deletes in progress voucher reservations', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = brokerCreateLorryHire($ctx);
+
+    $inProgress = app(TransporterVoucherService::class)->createForLorryHire($hire, $ctx['member'], [
+        'amount' => '750.00',
+        'payment_type' => VoucherPaymentType::Advance->value,
+        'payment_mode' => VoucherPaymentMode::Cash->value,
+    ]);
+
+    expect($inProgress->status)->toBe(VoucherStatus::InProgress);
+
+    app(LorryHireCancellationService::class)->cancel($hire->fresh(), $ctx['member'], [
+        'reason' => 'Release in progress',
+        'settle_outstanding' => false,
+    ]);
+
+    expect(TransporterVoucher::withTrashed()->find($inProgress->id)?->trashed())->toBeTrue();
 });
 
 test('cancel soft-deletes pending voucher but keeps paid voucher history', function () {

@@ -18,6 +18,14 @@
                 "tests/Feature/Broker/LorryHireCancellationTest.php"
             ],
             "status": "PASS"
+        },
+        {
+            "id": "NX-REG-BRK-CANCEL-003",
+            "summary": "Cancel settle: bank/cash/adjust-in-advance paid recovery and reservation release",
+            "nexus_tests": [
+                "tests/Feature/Broker/LorryHireCancellationTest.php"
+            ],
+            "status": "PASS"
         }
     ]
 }

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { loginAs } from '../fixtures/auth';
+import { confirmBranchEntryDialog } from '../fixtures/branch-entry';
 import { e2eEmails, e2ePassword } from '../fixtures/company-create';
 import { loadOwnerGlobalPanelFixture } from '../fixtures/owner-global-panel';
 
@@ -37,15 +38,8 @@ test.describe('Enter Branch Panel', () => {
         await expect(enterButtons.first()).toBeVisible({ timeout: 15_000 });
         await expect(enterButtons).toHaveCount(2);
 
-        const contextResponse = page.waitForResponse(
-            (response) =>
-                response.request().method() === 'POST' &&
-                response.url().includes('/workspace/context/companies/') &&
-                response.url().includes('/branches/'),
-        );
         await enterButtons.first().click();
-        const posted = await contextResponse;
-        expect(posted.status()).toBeLessThan(400);
+        await confirmBranchEntryDialog(page);
 
         await expect(page).toHaveURL(/\/operations\/?$/);
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(

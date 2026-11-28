@@ -8,6 +8,7 @@ use Database\Seeders\LocalDemoWorkspaceSeeder;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -24,6 +25,28 @@ class E2eEnsureBrokerJourneyCommand extends Command
     {
         if (app()->isProduction()) {
             $this->error('Refused: e2e:ensure-broker-journey must not run in production.');
+
+            return self::FAILURE;
+        }
+
+        $this->useDevelopmentDatabaseForE2eWhenConfigured();
+
+        try {
+            DB::connection()->getPdo();
+        } catch (\Throwable $e) {
+            $this->error('Database connection failed: '.$e->getMessage());
+
+            return self::FAILURE;
+        }
+
+        $databaseName = (string) DB::connection()->getDatabaseName();
+        if (
+            in_array($databaseName, ['nexus_test', 'nexus_mysql_test'], true)
+            && ! filter_var(env('E2E_FORCE_TEST_DATABASE'), FILTER_VALIDATE_BOOL)
+        ) {
+            $this->error(
+                "Refused: E2E fixtures must not use the PHPUnit database ({$databaseName}). Set E2E_DEV_DATABASE to your development schema (e.g. nexus) or point .env at dev.",
+            );
 
             return self::FAILURE;
         }
@@ -71,6 +94,12 @@ class E2eEnsureBrokerJourneyCommand extends Command
             ->orderBy('created_at')
             ->firstOrFail();
 
+        if ($head->company_id !== $company->id) {
+            $this->error('Demo Alpha branch company_id mismatch — re-run LocalDemoWorkspaceSeeder.');
+
+            return self::FAILURE;
+        }
+
         $payload = [
             'email' => LocalDemoWorkspaceSeeder::OWNER_A_EMAIL,
             'password' => $password,
@@ -90,5 +119,25 @@ class E2eEnsureBrokerJourneyCommand extends Command
         $this->line('  (Password is LOCAL_DEMO_PASSWORD from .env — demo users were seeded with the same value.)');
 
         return self::SUCCESS;
+    }
+
+    private function useDevelopmentDatabaseForE2eWhenConfigured(): void
+    {
+        $e2eConnection = trim((string) env('E2E_CONNECTION', ''));
+
+        if ($e2eConnection !== '') {
+            config(['database.default' => $e2eConnection]);
+        }
+
+        $connection = (string) config('database.default');
+        $devDatabase = trim((string) env('E2E_DEV_DATABASE', ''));
+
+        if ($devDatabase !== '') {
+            config([
+                "database.connections.{$connection}.database" => $devDatabase,
+            ]);
+        }
+
+        DB::purge($connection);
     }
 }

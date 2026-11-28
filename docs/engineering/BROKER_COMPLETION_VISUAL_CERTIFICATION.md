@@ -20,4 +20,6 @@ E2E_REQUIRE_DEMO=1 PLAYWRIGHT_USE_SYSTEM_CHROME=1 \
   npx playwright test tests/e2e/broker/legacy-ui-screenshots.spec.ts
 ```
 
+**2026-11-28:** Branch entry root cause was missing **Enter this branch?** confirmation (`branch-entry.ts`). `operational-completion.spec.ts` and core register screenshots pass with system Chrome; voucher modal screenshot captures bank combobox when demo hires exist.
+
 **E2E fixture:** `storage/app/e2e/broker-journey-auth.json` (company + branch IDs). Optional `E2E_ALLOW_DEMO_SEED=1` seeds Demo Alpha via `LocalDemoWorkspaceSeeder` without DB reset.
