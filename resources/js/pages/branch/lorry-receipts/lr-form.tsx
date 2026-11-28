@@ -2,6 +2,7 @@ import { Form, Head, Link } from '@inertiajs/react';
 import { Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import { PayeeConfirmationDialog } from '@/components/lorry-receipts/payee-confirmation-dialog';
 import { normalizeComparable } from '@/components/form-confirmation/diff';
 import type {
     ChangeReview,
@@ -606,6 +607,18 @@ export default function LrForm({
     const [substituteDriverPartyId, setSubstituteDriverPartyId] = useState('');
     const [agencyPayeeParty, setAgencyPayeeParty] =
         useState<PartyOption | null>(null);
+    const initialPayeeKey =
+        mode === 'edit' &&
+        (intendedPayeeType === 'owner' || intendedPayeeType === 'agency') &&
+        intendedPayeePartyId !== ''
+            ? `${intendedPayeeType}:${intendedPayeePartyId}`
+            : null;
+    const [confirmedPayeeKey, setConfirmedPayeeKey] = useState<string | null>(
+        initialPayeeKey,
+    );
+    const [payeeConfirmOpen, setPayeeConfirmOpen] = useState(false);
+    const suppressAgencyDefaultRef = useRef(false);
+    const [payeeGateError, setPayeeGateError] = useState<string | null>(null);
     const [headerQuickCreate, setHeaderQuickCreate] =
         useState<QuickCreatePartyRole | null>(null);
     const [goodsTypes, setGoodsTypes] = useState<NamedOption[]>(
@@ -779,6 +792,7 @@ export default function LrForm({
     useEffect(() => {
         if (
             !isMarketVehicle ||
+            suppressAgencyDefaultRef.current ||
             marketVehicleHasOwner ||
             intendedPayeeType === 'agency'
         ) {
@@ -789,6 +803,46 @@ export default function LrForm({
         }
         setIntendedPayeeType('agency');
     }, [intendedPayeeType, isMarketVehicle, marketVehicleHasOwner]);
+
+    const payeeCandidateKey = useMemo(() => {
+        if (!showPayeeRow) {
+            return null;
+        }
+        if (intendedPayeeType !== 'owner' && intendedPayeeType !== 'agency') {
+            return null;
+        }
+        const partyId =
+            intendedPayeeType === 'owner'
+                ? (selectedVehicle?.owner_party_id ?? intendedPayeePartyId)
+                : intendedPayeePartyId;
+        if (!partyId) {
+            return null;
+        }
+
+        return `${intendedPayeeType}:${partyId}`;
+    }, [
+        intendedPayeePartyId,
+        intendedPayeeType,
+        selectedVehicle?.owner_party_id,
+        showPayeeRow,
+    ]);
+
+    useEffect(() => {
+        setConfirmedPayeeKey(null);
+        suppressAgencyDefaultRef.current = false;
+        setPayeeGateError(null);
+    }, [vehicleId]);
+
+    useEffect(() => {
+        if (
+            !payeeCandidateKey ||
+            payeeCandidateKey === confirmedPayeeKey ||
+            payeeConfirmOpen
+        ) {
+            return;
+        }
+        setPayeeConfirmOpen(true);
+    }, [confirmedPayeeKey, payeeCandidateKey, payeeConfirmOpen]);
 
     useEffect(() => {
         if (!isOwnVehicle) {
@@ -997,7 +1051,22 @@ export default function LrForm({
         };
     }, [charges, goods]);
 
+    const cancelPayeeConfirmation = () => {
+        setIntendedPayeeType('');
+        setIntendedPayeePartyId('');
+        setAgencyPayeeParty(null);
+        setConfirmedPayeeKey(null);
+        suppressAgencyDefaultRef.current = true;
+        setPayeeConfirmOpen(false);
+    };
+
     const openConfirmation = (form: HTMLFormElement) => {
+        if (payeeCandidateKey && payeeCandidateKey !== confirmedPayeeKey) {
+            setPayeeGateError('Confirm the Pay To Payee before saving.');
+            setPayeeConfirmOpen(true);
+            return;
+        }
+        setPayeeGateError(null);
         const data = new FormData(form);
         const selectedOptionLabel = (fieldId: string): string => {
             const element = form.querySelector(
@@ -1860,6 +1929,10 @@ export default function LrForm({
                                                             onChange={(
                                                                 next,
                                                             ) => {
+                                                                suppressAgencyDefaultRef.current = false;
+                                                                setConfirmedPayeeKey(
+                                                                    null,
+                                                                );
                                                                 setIntendedPayeeType(
                                                                     next,
                                                                 );
@@ -1894,6 +1967,13 @@ export default function LrForm({
                                                                 errors.intended_payee_type
                                                             }
                                                         />
+                                                        {payeeGateError ? (
+                                                            <InputError
+                                                                message={
+                                                                    payeeGateError
+                                                                }
+                                                            />
+                                                        ) : null}
                                                     </div>
                                                 ) : null}
                                             </div>
@@ -2093,9 +2173,16 @@ export default function LrForm({
                                                                 value={
                                                                     intendedPayeePartyId
                                                                 }
-                                                                onValueChange={
-                                                                    setIntendedPayeePartyId
-                                                                }
+                                                                onValueChange={(
+                                                                    next,
+                                                                ) => {
+                                                                    setConfirmedPayeeKey(
+                                                                        null,
+                                                                    );
+                                                                    setIntendedPayeePartyId(
+                                                                        next,
+                                                                    );
+                                                                }}
                                                                 onPartyChange={
                                                                     setAgencyPayeeParty
                                                                 }
@@ -3639,6 +3726,33 @@ export default function LrForm({
                         </>
                     )}
                 </Form>
+
+                {payeeCandidateKey &&
+                (intendedPayeeType === 'owner' ||
+                    intendedPayeeType === 'agency') ? (
+                    <PayeeConfirmationDialog
+                        open={payeeConfirmOpen}
+                        onOpenChange={setPayeeConfirmOpen}
+                        truckNumber={
+                            selectedVehicle?.registration_number ?? '—'
+                        }
+                        payToType={intendedPayeeType}
+                        payeeName={
+                            intendedPayeeType === 'owner'
+                                ? (selectedVehicle?.owner_name ?? '—')
+                                : (agencyPayeeParty?.name ?? '—')
+                        }
+                        payeeContact={agencyPayeeParty?.contact_number ?? null}
+                        onConfirm={() => {
+                            if (payeeCandidateKey) {
+                                setConfirmedPayeeKey(payeeCandidateKey);
+                            }
+                            setPayeeConfirmOpen(false);
+                            setPayeeGateError(null);
+                        }}
+                        onCancel={cancelPayeeConfirmation}
+                    />
+                ) : null}
 
                 <FormConfirmationDialog
                     open={confirmOpen}

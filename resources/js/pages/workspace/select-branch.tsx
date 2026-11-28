@@ -1,5 +1,7 @@
 import { Form, Head } from '@inertiajs/react';
 import { MapPin } from 'lucide-react';
+import { useState } from 'react';
+import { BranchEntryConfirmationDialog } from '@/components/workspace/branch-entry-confirmation-dialog';
 import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
@@ -17,6 +19,9 @@ type SelectBranchProps = {
 };
 
 export default function SelectBranch({ company, branches }: SelectBranchProps) {
+    const [pendingBranch, setPendingBranch] = useState<WorkspaceBranch | null>(
+        null,
+    );
     return (
         <>
             <Head title="Select branch" />
@@ -33,6 +38,7 @@ export default function SelectBranch({ company, branches }: SelectBranchProps) {
                     {branches.map((branch) => (
                         <li key={branch.id}>
                             <Form
+                                id={`branch-enter-${branch.id}`}
                                 {...enter.form({
                                     company: company.id,
                                     branch: branch.id,
@@ -40,10 +46,11 @@ export default function SelectBranch({ company, branches }: SelectBranchProps) {
                             >
                                 {({ processing }) => (
                                     <Button
-                                        type="submit"
+                                        type="button"
                                         variant="outline"
                                         disabled={processing}
                                         className="h-auto w-full justify-start gap-3 px-4 py-3 text-left"
+                                        onClick={() => setPendingBranch(branch)}
                                     >
                                         <MapPin
                                             className="size-5 shrink-0 text-[#2D8CFF]"
@@ -66,6 +73,30 @@ export default function SelectBranch({ company, branches }: SelectBranchProps) {
                     ))}
                 </ul>
             </PageShell>
+
+            {pendingBranch ? (
+                <BranchEntryConfirmationDialog
+                    open={pendingBranch !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setPendingBranch(null);
+                        }
+                    }}
+                    companyName={company.name}
+                    branchName={pendingBranch.name}
+                    branchLocation={null}
+                    onConfirm={() => {
+                        const form = document.getElementById(
+                            `branch-enter-${pendingBranch.id}`,
+                        );
+                        if (form instanceof HTMLFormElement) {
+                            form.requestSubmit();
+                        }
+                        setPendingBranch(null);
+                    }}
+                    onCancel={() => setPendingBranch(null)}
+                />
+            ) : null}
         </>
     );
 }

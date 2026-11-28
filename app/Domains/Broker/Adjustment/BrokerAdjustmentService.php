@@ -9,6 +9,7 @@ use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
+use App\Domains\Broker\LorryHire\LorryHireOperationalDelivery;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
@@ -110,6 +111,16 @@ final class BrokerAdjustmentService
      */
     public function syncFixedAdjustments(LorryHire $hire, User $actor, array $payload): void
     {
+        if (! LorryHireOperationalDelivery::isDelivered($hire)) {
+            if ($this->fixedAdjustmentsPayloadHasValues($payload)) {
+                throw ValidationException::withMessages([
+                    'fixed_adjustments' => 'Detention, deviation, unloading weight and other delivery adjustments are available after the Bilty is delivered.',
+                ]);
+            }
+
+            return;
+        }
+
         $this->syncMoneyAdjustment($hire, $actor, BrokerAdjustmentType::Detention, $payload['detention'] ?? null);
         $this->syncMoneyAdjustment($hire, $actor, BrokerAdjustmentType::Deviation, $payload['deviation'] ?? null);
         $this->syncMoneyAdjustment($hire, $actor, BrokerAdjustmentType::MiscExpense, $payload['misc_expense'] ?? null);
@@ -122,6 +133,23 @@ final class BrokerAdjustmentService
      * @param  array{
      *     fixed_adjustments?: array<string, mixed>|null
      * }  $payload
+     */
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function fixedAdjustmentsPayloadHasValues(array $payload): bool
+    {
+        foreach (['detention', 'deviation', 'misc_expense', 'unloading_weight', 'shortage', 'damage'] as $key) {
+            if ($this->normalizeFixedField($payload[$key] ?? null, $key === 'unloading_weight' ? 3 : 2) !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
      */
     public function fixedAdjustmentsDiffer(LorryHire $hire, array $payload): bool
     {

@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/sheet';
 import { usePage } from '@inertiajs/react';
 import { getCsrfToken } from '@/lib/csrf';
+import { normalizeVehicleRegistration } from '@/lib/vehicle-registration';
 import type { WorkspaceShare } from '@/types/workspace';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -265,7 +266,9 @@ export function QuickCreateVehicleSheet({
         setErrors({});
 
         const common = {
-            registration_number: draft.registration_number.trim().toUpperCase(),
+            registration_number: normalizeVehicleRegistration(
+                draft.registration_number,
+            ),
             registration_date: draft.registration_date || null,
             truck_type_id: draft.truck_type_id || null,
             primary_driver_party_id: draft.primary_driver_party_id || null,
@@ -379,6 +382,14 @@ export function QuickCreateVehicleSheet({
                                         update(
                                             'registration_number',
                                             event.target.value,
+                                        )
+                                    }
+                                    onBlur={() =>
+                                        update(
+                                            'registration_number',
+                                            normalizeVehicleRegistration(
+                                                draft.registration_number,
+                                            ),
                                         )
                                     }
                                     className="uppercase"

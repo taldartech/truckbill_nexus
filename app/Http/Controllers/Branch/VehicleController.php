@@ -27,6 +27,7 @@ use App\Models\OwnerTyreLayout;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleDriverAssignment;
+use App\Rules\IndianVehicleRegistrationRule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -198,7 +199,7 @@ class VehicleController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
 
         $validated = $request->validate([
-            'registration_number' => ['required', 'string', 'max:32'],
+            'registration_number' => ['required', 'string', 'max:32', new IndianVehicleRegistrationRule],
             'vehicle_type' => ['nullable', 'string', 'max:100'],
             'make' => ['nullable', 'string', 'max:100'],
             'model' => ['nullable', 'string', 'max:100'],
@@ -399,7 +400,7 @@ class VehicleController extends Controller
         $actor = $request->user();
 
         $validated = $request->validate([
-            'registration_number' => ['sometimes', 'string', 'max:32'],
+            'registration_number' => ['sometimes', 'string', 'max:32', new IndianVehicleRegistrationRule],
             'vehicle_type' => ['nullable', 'string', 'max:100'],
             'make' => ['nullable', 'string', 'max:100'],
             'model' => ['nullable', 'string', 'max:100'],

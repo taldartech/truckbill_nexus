@@ -17,10 +17,26 @@ import type {
     FieldReview,
     FieldReviewSection,
     FormConfirmationProps,
+    FormConfirmationSectionTone,
 } from './types';
 
 /** Above this many review values (or with any table) the dialog uses the wide two-column layout. */
 const COMPACT_FIELD_LIMIT = 8;
+
+const SIZE_CLASS: Record<NonNullable<FormConfirmationProps['size']>, string> = {
+    compact: 'sm:max-w-md',
+    standard: 'sm:max-w-lg',
+    large: 'sm:max-w-3xl',
+    extraWide: 'sm:max-w-5xl',
+};
+
+const SECTION_TONE_CLASS: Record<FormConfirmationSectionTone, string> = {
+    business: 'rounded-md border border-[#2D8CFF]/20 bg-[#2D8CFF]/5 p-3',
+    route: 'rounded-md border border-teal-500/20 bg-teal-500/5 p-3',
+    financial: 'rounded-md border border-amber-500/25 bg-amber-500/10 p-3',
+    success: 'rounded-md border border-emerald-500/25 bg-emerald-500/10 p-3',
+    destructive: 'rounded-md border border-destructive/25 bg-destructive/5 p-3',
+};
 
 const CHANGE_TYPE_LABEL: Record<ChangeReview['changeType'], string> = {
     modified: 'Changed',
@@ -164,6 +180,9 @@ function ReviewSections({
                     className={cn(
                         'space-y-3',
                         section.layout === 'full' && 'sm:col-span-2',
+                        section.tone
+                            ? SECTION_TONE_CLASS[section.tone]
+                            : undefined,
                     )}
                 >
                     <h3 className="border-b border-border pb-1.5 text-sm font-semibold text-foreground">
@@ -262,6 +281,8 @@ export function FormConfirmationDialog({
     confirmLabel,
     onSecondaryConfirm,
     secondaryConfirmLabel,
+    size,
+    onCancel,
 }: FormConfirmationProps) {
     const [reasonText, setReasonText] = useState('');
     const [reasonError, setReasonError] = useState<string | null>(null);
@@ -325,12 +346,15 @@ export function FormConfirmationDialog({
 
     const showChanges = mode === 'edit' && changes.length > 0;
 
+    const resolvedSize =
+        size ?? (wide ? 'large' : changes.length === 0 ? 'standard' : 'large');
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
                 className={cn(
                     'flex max-h-[88vh] w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:w-full',
-                    wide ? 'sm:max-w-[960px]' : 'sm:max-w-xl',
+                    SIZE_CLASS[resolvedSize],
                 )}
             >
                 <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
@@ -418,7 +442,10 @@ export function FormConfirmationDialog({
                         type="button"
                         variant="outline"
                         disabled={processing}
-                        onClick={() => onOpenChange(false)}
+                        onClick={() => {
+                            onCancel?.();
+                            onOpenChange(false);
+                        }}
                     >
                         {mode === 'destructive' ? 'Cancel' : 'Back to edit'}
                     </Button>

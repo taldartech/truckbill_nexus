@@ -26,6 +26,7 @@ import {
     type FixedAdjustmentsDraft,
     emptyFixedAdjustments,
 } from '@/pages/broker/lorry-hires/components/fixed-adjustments-section';
+import { FreightProfitabilitySection } from '@/pages/broker/lorry-hires/components/freight-profitability-section';
 import { LinkedBiltyContextPanel } from '@/pages/broker/lorry-hires/components/linked-bilty-context-panel';
 import {
     LrfActions,
@@ -117,6 +118,7 @@ export type EditableHire = {
     tds_locked_reason: string | null;
     has_unloading_adjustment: boolean;
     fixed_adjustments: FixedAdjustmentsDraft;
+    adjustments_editable?: boolean;
 };
 
 export type LorryHireFormProps = {
@@ -136,7 +138,22 @@ export type LorryHireFormProps = {
     goodsRows: GoodsRow[];
     rateTypeOptions: RateOption[];
     defaults: { hire_date: string; rate_type: string };
-    permissions: { can_create_voucher: boolean };
+    permissions: {
+        can_create_voucher: boolean;
+        can_view_customer_freight?: boolean;
+    };
+    customer_freight?: {
+        lines: Array<{
+            label: string;
+            rate_type: string;
+            rate: string | null;
+            actual_weight: string | null;
+            charged_weight: string | null;
+            package_count: string | null;
+            customer_freight_amount: string | null;
+        }>;
+        total: string;
+    } | null;
     hire?: EditableHire;
     urls: {
         store: string;
@@ -328,6 +345,7 @@ export default function LorryHireForm({
     rateTypeOptions,
     defaults,
     permissions,
+    customer_freight = null,
     hire,
     urls,
 }: LorryHireFormProps & { mode: 'create' | 'edit' }) {
@@ -406,6 +424,8 @@ export default function LorryHireForm({
     }, [form.data.fixed_adjustments, hire, isEdit]);
     const netPayable =
         financials.netPayable + baselineAdjustmentsNet + fixedAdjustmentImpact;
+    const adjustmentsEditable =
+        isEdit && (hire.adjustments_editable ?? false) === true;
 
     const route =
         [lorryReceipt.loading_station, lorryReceipt.unloading_station]
@@ -478,17 +498,18 @@ export default function LorryHireForm({
                 description: row.description.trim(),
                 amount: row.amount,
             })),
-        fixed_adjustments: isEdit
-            ? {
-                  detention: data.fixed_adjustments.detention.trim(),
-                  deviation: data.fixed_adjustments.deviation.trim(),
-                  misc_expense: data.fixed_adjustments.misc_expense.trim(),
-                  unloading_weight:
-                      data.fixed_adjustments.unloading_weight.trim(),
-                  shortage: data.fixed_adjustments.shortage.trim(),
-                  damage: data.fixed_adjustments.damage.trim(),
-              }
-            : undefined,
+        fixed_adjustments:
+            isEdit && (hire?.adjustments_editable ?? false)
+                ? {
+                      detention: data.fixed_adjustments.detention.trim(),
+                      deviation: data.fixed_adjustments.deviation.trim(),
+                      misc_expense: data.fixed_adjustments.misc_expense.trim(),
+                      unloading_weight:
+                          data.fixed_adjustments.unloading_weight.trim(),
+                      shortage: data.fixed_adjustments.shortage.trim(),
+                      damage: data.fixed_adjustments.damage.trim(),
+                  }
+                : undefined,
     });
 
     const createReviewSections = (): FieldReviewSection[] => [
@@ -742,6 +763,23 @@ export default function LorryHireForm({
                         onSubmit={handleSubmit}
                         noValidate={isEdit}
                     >
+                        {permissions.can_view_customer_freight &&
+                        customer_freight ? (
+                            <FreightProfitabilitySection
+                                canViewCustomerFreight
+                                customerGoodsLines={customer_freight.lines}
+                                customerFreightTotal={customer_freight.total}
+                                transporterFreight={
+                                    financials.transporterFreight
+                                }
+                                transporterNetPayable={netPayable}
+                                adjustmentImpact={
+                                    baselineAdjustmentsNet +
+                                    fixedAdjustmentImpact
+                                }
+                            />
+                        ) : null}
+
                         <div data-testid="lorry-hire-section-hire-charges">
                             <LrfSection
                                 step={2}
@@ -982,7 +1020,7 @@ export default function LorryHireForm({
                             </LrfSection>
                         </div>
 
-                        {isEdit ? (
+                        {adjustmentsEditable ? (
                             <FixedAdjustmentsSection
                                 values={form.data.fixed_adjustments}
                                 formErrors={
@@ -1196,6 +1234,7 @@ export default function LorryHireForm({
                             }
                             setConfirmOpen(open);
                         }}
+                        size="large"
                         processing={form.processing}
                         mode="edit"
                         title="Save Lorry Hire changes?"
@@ -1221,6 +1260,7 @@ export default function LorryHireForm({
                             }
                             setConfirmOpen(open);
                         }}
+                        size="large"
                         processing={form.processing}
                         mode="create"
                         title="Create this Lorry Hire?"

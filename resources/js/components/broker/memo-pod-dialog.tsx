@@ -384,6 +384,7 @@ export function MemoPodDialog({
                 <FormConfirmationDialog
                     open={confirmOpen}
                     onOpenChange={setConfirmOpen}
+                    size="extraWide"
                     mode="create"
                     title="Assign this Memo / POD?"
                     description="The selected Bilties will be marked Delivered and grouped under this memo for invoicing."

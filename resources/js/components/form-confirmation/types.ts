@@ -12,12 +12,26 @@ export type FieldReviewTable = {
     rows: string[][];
 };
 
+export type FormConfirmationSize =
+    | 'compact'
+    | 'standard'
+    | 'large'
+    | 'extraWide';
+
+export type FormConfirmationSectionTone =
+    | 'business'
+    | 'route'
+    | 'financial'
+    | 'success'
+    | 'destructive';
+
 export type FieldReviewSection = {
     title: string;
     fields?: FieldReview[];
     table?: FieldReviewTable;
     /** Full-width section in the confirmation grid. */
     layout?: 'default' | 'full';
+    tone?: FormConfirmationSectionTone;
 };
 
 export type ChangeReview = {
@@ -62,4 +76,8 @@ export type FormConfirmationProps = {
     /** Optional second primary path (e.g. Save & Create Lorry Hire). */
     onSecondaryConfirm?: () => void;
     secondaryConfirmLabel?: string;
+    /** Explicit modal width; otherwise inferred from content. */
+    size?: FormConfirmationSize;
+    /** Cancel / dismiss without confirming (e.g. reset Payee). */
+    onCancel?: () => void;
 };

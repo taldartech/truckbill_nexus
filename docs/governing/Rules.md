@@ -373,3 +373,20 @@ Before completing any implementation task: review the full diff; remove unused i
 
 - Every new transporter payment entry surface opens with a blank payment amount (`''`) — never prefilled with outstanding payable, balance due, Book Balance, total freight, `0`, or any suggested figure. This applies to the single Voucher Payment modal, each selected row in the bulk Voucher Payment modal (where totals sum only explicitly entered valid positive amounts), Create Lorry Hire & Record Voucher (`?pay=1`), the Transporter Book Balance modal, and Linked Bilty Group payment. Closing and reopening a new payment modal resets amounts to blank.
 - Client and server validation enforce that a positive payment amount is explicitly entered for every processed row (empty is never treated as zero), cannot exceed eligible Lorry Hire remaining payable, and for `Adjust in Advance` (including bulk aggregate) cannot exceed available Book Balance. Validation failures keep form inputs intact and show clear per-row and summary errors. Existing voucher edit screens continue displaying their persisted amounts.
+
+## 41. Delivery-Dependent Lorry Hire Adjustments (Permanent)
+
+- The six fixed transporter adjustments (Detention, Deviation, Misc. Expense, Unloading Weight, Shortage, Damage) are editable **only after** the linked Bilty is operationally delivered (LR status Delivered or Broker delivery Delivered). Undelivered hires hide the section, omit `fixed_adjustments` from submit payloads, and reject server-side mutation.
+- Custom Amount rows remain available on edit per Rule 37 and are not gated by delivery. At most one active value per fixed adjustment type per hire; edits replace the prior value with audit history.
+
+## 42. Pay To Confirmation and Branch Entry (Permanent)
+
+- Market Bilty **Pay To** requires immediate compact confirmation when Owner or Agency is selected; cancellation resets Pay To and Payee Party to null without re-applying the agency default until the truck or Pay To changes again. Final Bilty save is blocked until the current Payee is confirmed.
+- Branch workspace entry requires compact confirmation before `WorkspaceSession` activation (select-branch and equivalent entry surfaces). Cancellation leaves the current workspace unchanged. Branch exit continues through the explicit leave-branch action (sidebar); it clears operational session without logging the user out of TruckBill.
+
+## 43. Context Confirmations, Toasts and Vehicle Numbers (Permanent)
+
+- Confirmations use shared dialog primitives with explicit sizes (`compact`, `standard`, `large`, `extraWide`) and optional section tones (business, route, financial, success, destructive). Bulk Memo / POD and voucher payments use extra-wide layouts; Payee and branch entry use compact layouts.
+- Success and failure feedback uses the shared Sonner toaster (`useFlashToast` + `flash.success` / `flash.error` / `flash.toast`); inline field validation is never replaced by per-field toasts.
+- Vehicle registration numbers normalize to uppercase without separators and validate through `IndianVehicleRegistration` / `IndianVehicleRegistrationRule` on every create and update path (Vehicle Master, quick add, HTTP validation). Supported patterns include standard state series and Bharat `##BH####AA` series.
+- Lorry Hire create/edit shows read-only customer freight from the linked Bilty and an estimated freight profitability summary (customer freight minus transporter net payable) only when the viewer may see freight amounts.

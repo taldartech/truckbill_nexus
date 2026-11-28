@@ -22,6 +22,7 @@ use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
 use App\Support\Database\CaseInsensitiveLike;
+use App\Support\Vehicle\IndianVehicleRegistration;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -73,6 +74,7 @@ final class VehicleService
     ): Vehicle {
         $this->access->assertCanMutate($actor, $company, $branch);
         $this->assertBranchBelongs($company, $branch);
+        $attributes['registration_number'] = IndianVehicleRegistration::assertValid($attributes['registration_number'] ?? '');
         $this->assertRegistrationUnique($company, (string) $attributes['registration_number']);
         $panelBranch = $visibilityBranch ?? $branch;
         $normalized = $this->normalizeOwnershipAttributes($company, $panelBranch, $attributes);
@@ -142,6 +144,7 @@ final class VehicleService
         $this->access->assertCanEdit($actor, $company, $branch);
 
         if (isset($attributes['registration_number'])) {
+            $attributes['registration_number'] = IndianVehicleRegistration::assertValid($attributes['registration_number']);
             $this->assertRegistrationUnique(
                 $company,
                 (string) $attributes['registration_number'],
@@ -497,7 +500,7 @@ final class VehicleService
 
     private function assertRegistrationUnique(Company $company, string $registration, ?string $ignoreId = null): void
     {
-        $normalized = strtoupper(trim($registration));
+        $normalized = IndianVehicleRegistration::normalize($registration);
         if ($normalized === '') {
             throw ValidationException::withMessages(['registration_number' => 'Registration number is required.']);
         }

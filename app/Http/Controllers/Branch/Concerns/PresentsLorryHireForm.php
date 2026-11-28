@@ -6,6 +6,7 @@ use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Support\FreightRateTypeCatalog;
 use App\Models\LorryReceipt;
 use App\Models\LrGoodsRow;
+use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Validation\Rule;
 
 /**
@@ -66,6 +67,40 @@ trait PresentsLorryHireForm
                 'rate_semantics' => ($row->rate_semantics ?? FreightRateSemantics::WeightKg)->value,
             ])->all()),
             'rateTypeOptions' => FreightRateTypeCatalog::inertiaOptions(),
+        ];
+    }
+
+    /**
+     * @return array{lines: list<array<string, mixed>>, total: string}|null
+     */
+    protected function customerFreightContext(LorryReceipt $lorryReceipt, bool $maySeeFreight): ?array
+    {
+        if (! $maySeeFreight) {
+            return null;
+        }
+
+        $presentation = app(FreightAmountPresentation::class);
+        $lorryReceipt->loadMissing('goodsRows.goodsType');
+        $total = '0.00';
+        $lines = [];
+
+        foreach ($lorryReceipt->goodsRows as $row) {
+            $amount = $presentation->presentAmount($row->freight_amount, true) ?? '0.00';
+            $total = bcadd($total, (string) $row->freight_amount, 2);
+            $lines[] = [
+                'label' => $this->goodsRowLabel($row),
+                'rate_type' => $row->freight_rate_type->value,
+                'rate' => number_format((float) $row->freight_rate, 4, '.', ''),
+                'actual_weight' => $row->actual_weight,
+                'charged_weight' => $row->charged_weight,
+                'package_count' => $row->package_count,
+                'customer_freight_amount' => $amount,
+            ];
+        }
+
+        return [
+            'lines' => $lines,
+            'total' => $presentation->presentAmount($total, true) ?? '0.00',
         ];
     }
 

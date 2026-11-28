@@ -232,9 +232,11 @@ class LorryHireController extends Controller
             $company,
             $branch,
         );
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
         return Inertia::render('broker/lorry-hires/create', [
             ...$this->lorryHireFormProps($lorryReceipt),
+            'customer_freight' => $this->customerFreightContext($lorryReceipt, $maySeeFreight),
             'payee' => $payee !== null ? ['id' => $payee->id, 'name' => $payee->name] : null,
             'payeeBlockedReason' => $payeeBlockedReason,
             'tdsPreview' => $payee !== null ? $this->lorryHires->tdsPreviewForPayee($payee) : null,
@@ -242,7 +244,10 @@ class LorryHireController extends Controller
                 'hire_date' => $this->lorryHires->defaultHireDate($company),
                 'rate_type' => FreightRateTypeCatalog::default()->value,
             ],
-            'permissions' => ['can_create_voucher' => $canCreateVoucher],
+            'permissions' => [
+                'can_create_voucher' => $canCreateVoucher,
+                'can_view_customer_freight' => $maySeeFreight,
+            ],
             'urls' => [
                 'store' => route('branch.broker.lorry-hires.store-from-lr', [$lorryReceipt], absolute: false),
                 'lr_show' => route('branch.lorry-receipts.show', [$lorryReceipt], absolute: false),

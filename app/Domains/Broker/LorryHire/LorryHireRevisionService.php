@@ -172,12 +172,19 @@ final class LorryHireRevisionService
                 'tds_amount' => $after['tds_amount'],
             ])->save();
 
-            if ($adjustmentsChanging && is_array($payload['fixed_adjustments'] ?? null)) {
-                $this->adjustments->syncFixedAdjustments(
-                    $locked->fresh(['goodsLines.lrGoodsRow', 'adjustments']) ?? $locked,
-                    $actor,
-                    $payload['fixed_adjustments'],
-                );
+            if ($adjustmentsChanging) {
+                if (! LorryHireOperationalDelivery::isDelivered($locked)) {
+                    throw ValidationException::withMessages([
+                        'fixed_adjustments' => 'Delivery adjustments cannot be changed until the Bilty is delivered.',
+                    ]);
+                }
+                if (is_array($payload['fixed_adjustments'] ?? null)) {
+                    $this->adjustments->syncFixedAdjustments(
+                        $locked->fresh(['goodsLines.lrGoodsRow', 'adjustments']) ?? $locked,
+                        $actor,
+                        $payload['fixed_adjustments'],
+                    );
+                }
             }
 
             $summaryAfter = $this->calculations->summarize($locked->fresh([

@@ -7,6 +7,7 @@ use App\Domains\Broker\Adjustment\BrokerAdjustmentService;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
+use App\Domains\Broker\LorryHire\LorryHireOperationalDelivery;
 use App\Domains\Broker\LorryHire\LorryHireRevisionService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Consignment\Support\FreightRateTypeCatalog;
@@ -18,6 +19,7 @@ use App\Models\Company;
 use App\Models\LorryHire;
 use App\Models\LorryHireGoodsLine;
 use App\Models\User;
+use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,13 +40,15 @@ class LorryHireEditController extends Controller
         private readonly LorryHireRevisionService $revisions,
         private readonly LorryHireCalculationService $calculations,
         private readonly BrokerAdjustmentService $adjustments,
+        private readonly FreightAmountPresentation $freightPresentation,
     ) {}
 
     public function edit(Request $request, LorryHire $lorryHire, Company $company, Branch $branch): Response
     {
-        $this->authorizeEdit($request, $lorryHire, $company, $branch);
+        $actor = $this->authorizeEdit($request, $lorryHire, $company, $branch);
         $lorryHire->load(['lorryReceipt', 'transporter', 'tdsSnapshot', 'goodsLines.lrGoodsRow', 'customAmounts']);
         $lorryReceipt = $lorryHire->lorryReceipt ?? abort(404);
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
         $summary = $this->calculations->summarize($lorryHire);
         $hireRowIds = $lorryHire->goodsLines->pluck('lr_goods_row_id')->all();
@@ -68,7 +72,11 @@ class LorryHireEditController extends Controller
                 'hire_date' => $lorryHire->hire_date?->toDateString() ?? '',
                 'rate_type' => FreightRateTypeCatalog::default()->value,
             ],
-            'permissions' => ['can_create_voucher' => false],
+            'permissions' => [
+                'can_create_voucher' => false,
+                'can_view_customer_freight' => $maySeeFreight,
+            ],
+            'customer_freight' => $this->customerFreightContext($lorryReceipt, $maySeeFreight),
             'hire' => [
                 'id' => $lorryHire->id,
                 'hire_number' => $lorryHire->hire_number,
@@ -94,6 +102,7 @@ class LorryHireEditController extends Controller
                 'tds_locked_reason' => $this->revisions->tdsLockedReason($lorryHire, $company, $summary['outstanding_amount']),
                 'has_unloading_adjustment' => $this->calculations->latestUnloadingWeight($lorryHire) !== null,
                 'fixed_adjustments' => $this->adjustments->snapshotFixedAdjustments($lorryHire),
+                'adjustments_editable' => LorryHireOperationalDelivery::isDelivered($lorryHire),
             ],
             'urls' => [
                 'store' => route('branch.broker.lorry-hires.update', [$lorryHire], absolute: false),
