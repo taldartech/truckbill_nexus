@@ -148,5 +148,5 @@ export function formatMtLabel(mt: string | number | null | undefined): string {
     if (n === null) {
         return '—';
     }
-    return `${formatFixed(n, 3)} MT`;
+    return `${formatFixed(n, 2)} MT`;
 }

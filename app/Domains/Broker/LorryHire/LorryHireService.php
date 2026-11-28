@@ -113,8 +113,7 @@ final class LorryHireService
         }
 
         if ($payableOnly) {
-            $builder->where('status', '!=', LorryHireStatus::Cancelled->value)
-                ->where('outstanding_amount', '>', 0);
+            LorryHireRemainingPayableScope::applyPositiveRemaining($builder);
         }
 
         if (filled($customerPartyId)) {

@@ -1,4 +1,5 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { BranchContextEnterControl } from '@/components/workspace/branch-context-enter-control';
 import { useMemo, useState } from 'react';
 import OwnerBranchesController from '@/actions/App/Http/Controllers/Owner/OwnerBranchesController';
 import InputError from '@/components/input-error';
@@ -14,7 +15,6 @@ import { Label } from '@/components/ui/label';
 import { MobileNumberInput } from '@/components/ui/mobile-number-input';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatDisplayDateSmart } from '@/lib/dates';
-import { branch as enterBranchContext } from '@/routes/workspace/context';
 
 type GstRateOption = {
     id: string;
@@ -236,29 +236,12 @@ export default function OwnerBranchesShow({
                         <Link href={links.users}>Manage users</Link>
                     </Button>
                     {canEnterBranch ? (
-                        <Form
-                            {...enterBranchContext.form({
-                                company: company.id,
-                                branch: branch.id,
-                            })}
-                        >
-                            {({ processing }) => (
-                                <>
-                                    <input
-                                        type="hidden"
-                                        name="redirect"
-                                        value="/operations"
-                                    />
-                                    <Button
-                                        type="submit"
-                                        disabled={processing}
-                                        className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                                    >
-                                        Enter Branch Panel
-                                    </Button>
-                                </>
-                            )}
-                        </Form>
+                        <BranchContextEnterControl
+                            company={company}
+                            branch={branch}
+                            redirect="/operations"
+                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                        />
                     ) : null}
                 </div>
 

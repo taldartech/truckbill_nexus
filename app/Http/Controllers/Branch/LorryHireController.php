@@ -567,7 +567,7 @@ class LorryHireController extends Controller
     private function adjustmentDeliveryPermissions(User $actor, Company $company, Branch $branch): array
     {
         return [
-            'can_create_adjustment' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_ADJUSTMENT_CREATE, $company, $branch),
+            'can_create_adjustment' => false,
             'can_view_adjustment' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_ADJUSTMENT_VIEW, $company, $branch),
             'can_manage_delivery' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_DELIVERY_MANAGE, $company, $branch),
             'can_correct_memo' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_EDIT, $company, $branch)

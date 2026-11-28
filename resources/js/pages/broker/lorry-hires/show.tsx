@@ -19,7 +19,6 @@ import {
     Printer,
     Wallet,
 } from 'lucide-react';
-import { FreightAdjustmentEntry } from '@/components/broker/freight-adjustment-entry';
 import { DisplayDate } from '@/components/display-date';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatKgAsMt2, formatRate2 } from '@/lib/decimal-format';
@@ -189,7 +188,6 @@ export default function LorryHireShow({
     cancelPreview,
     adjustments,
     revisions = [],
-    adjustmentTypeOptions,
     fixed_adjustments,
     delivery,
     permissions,
@@ -693,12 +691,6 @@ export default function LorryHireShow({
                             ) : null}
 
                             <FbDetailCard title="Freight Adjustments">
-                                {permissions.can_create_adjustment ? (
-                                    <FreightAdjustmentEntry
-                                        storeUrl={urls.adjustment_store}
-                                        typeOptions={adjustmentTypeOptions}
-                                    />
-                                ) : null}
                                 {permissions.can_edit && urls.edit ? (
                                     <p className="border-b border-slate-100 px-4 py-3 text-sm text-muted-foreground">
                                         Detention, deviation, misc. expense,

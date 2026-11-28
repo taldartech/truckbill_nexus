@@ -1,4 +1,4 @@
-import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Filter, Settings2 } from 'lucide-react';
 import { useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
-import { branch as enterBranchContext } from '@/routes/workspace/context';
+import { BranchContextEnterControl } from '@/components/workspace/branch-context-enter-control';
 
 type BranchRow = {
     id: string;
@@ -192,33 +192,12 @@ export default function OwnerBranchesIndex({
                                             />
                                             {canEnterBranch &&
                                             branch.status === 'Active' ? (
-                                                <Form
-                                                    {...enterBranchContext.form(
-                                                        {
-                                                            company: company.id,
-                                                            branch: branch.id,
-                                                        },
-                                                    )}
-                                                >
-                                                    {({ processing }) => (
-                                                        <>
-                                                            <input
-                                                                type="hidden"
-                                                                name="redirect"
-                                                                value="/operations"
-                                                            />
-                                                            <Button
-                                                                type="submit"
-                                                                disabled={
-                                                                    processing
-                                                                }
-                                                            >
-                                                                Enter Branch
-                                                                Panel
-                                                            </Button>
-                                                        </>
-                                                    )}
-                                                </Form>
+                                                <BranchContextEnterControl
+                                                    company={company}
+                                                    branch={branch}
+                                                    redirect="/operations"
+                                                    label="Enter Branch Panel"
+                                                />
                                             ) : null}
                                         </div>
                                     </li>

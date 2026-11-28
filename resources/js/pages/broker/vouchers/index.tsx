@@ -1,6 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Eye, Plus } from 'lucide-react';
+import { useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
+import { DisplayDate } from '@/components/display-date';
 import {
     AppIndexFilters,
     AppIndexListCard,
@@ -9,17 +11,24 @@ import {
 import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type VoucherRow = {
     id: string;
     voucher_number: string;
+    voucher_date: string | null;
+    status: string;
+    payment_mode: string | null;
+    payment_type: string;
+    amount: string | null;
     lr_number: string | null;
     billing_customer_name: string | null;
     transporter_name: string | null;
     vehicle_registration: string | null;
     source: string | null;
     destination: string | null;
-    urls: { show: string };
+    next_status: string | null;
+    urls: { show: string; status?: string };
 };
 
 type FilterOption = { value: string; label: string };
@@ -37,7 +46,7 @@ type Props = {
         payment_mode: string;
     };
     filterOptions: { transporters: FilterOption[] };
-    permissions: { can_create: boolean };
+    permissions: { can_create: boolean; can_status?: boolean };
     statusOptions: Array<{ value: string; label: string }>;
     paymentModeOptions: Array<{ value: string; label: string }>;
     vouchers: {
@@ -65,6 +74,7 @@ export default function VouchersIndex({
     vouchers,
     urls,
 }: Props) {
+    const [rowProcessingId, setRowProcessingId] = useState<string | null>(null);
     const filterQuery = {
         search: filters.search || undefined,
         lr_number: filters.lr_number || undefined,
@@ -281,13 +291,16 @@ export default function VouchersIndex({
                                     <th>Transporter</th>
                                     <th>Source</th>
                                     <th>Destination</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
                                     <th className="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {vouchers.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8}>
+                                        <td colSpan={11}>
                                             <p className="app-index-empty">
                                                 No payments found.
                                             </p>
@@ -318,8 +331,62 @@ export default function VouchersIndex({
                                             </td>
                                             <td>{row.source ?? '—'}</td>
                                             <td>{row.destination ?? '—'}</td>
+                                            <td className="text-nowrap">
+                                                <DisplayDate
+                                                    value={row.voucher_date}
+                                                />
+                                            </td>
+                                            <td className="tabular-nums">
+                                                {row.amount ?? '—'}
+                                            </td>
                                             <td>
-                                                <div className="btn-action-row">
+                                                <WorkspaceStatusBadge
+                                                    status={row.status}
+                                                />
+                                            </td>
+                                            <td>
+                                                <div className="btn-action-row flex flex-nowrap items-center justify-center gap-1">
+                                                    {permissions.can_status &&
+                                                    row.next_status &&
+                                                    row.urls.status ? (
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-7 text-xs"
+                                                            disabled={
+                                                                rowProcessingId ===
+                                                                row.id
+                                                            }
+                                                            onClick={() => {
+                                                                setRowProcessingId(
+                                                                    row.id,
+                                                                );
+                                                                router.post(
+                                                                    row.urls
+                                                                        .status!,
+                                                                    {
+                                                                        status: row.next_status,
+                                                                    },
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                        preserveState: true,
+                                                                        onFinish:
+                                                                            () =>
+                                                                                setRowProcessingId(
+                                                                                    null,
+                                                                                ),
+                                                                    },
+                                                                );
+                                                            }}
+                                                        >
+                                                            Mark{' '}
+                                                            {row.next_status.replaceAll(
+                                                                '_',
+                                                                ' ',
+                                                            )}
+                                                        </Button>
+                                                    ) : null}
                                                     <AppIconAction
                                                         icon={Eye}
                                                         label="Open voucher"

@@ -14,6 +14,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    isValidVehicleRegistration,
+    normalizeVehicleRegistration,
+    vehicleRegistrationInvalidMessage,
+} from '@/lib/vehicle-registration';
 
 type Vehicle = {
     id: string;
@@ -105,6 +110,12 @@ export default function VehicleForm({
     const [ownerPartyId, setOwnerPartyId] = useState(
         vehicle?.owner_party_id ?? '',
     );
+    const [registrationNumber, setRegistrationNumber] = useState(
+        vehicle?.registration_number ?? '',
+    );
+    const [registrationClientError, setRegistrationClientError] = useState<
+        string | null
+    >(null);
     const [primaryDriverPartyId, setPrimaryDriverPartyId] = useState(
         vehicle?.primary_driver_party_id ?? '',
     );
@@ -157,14 +168,46 @@ export default function VehicleForm({
                                         <Input
                                             id="registration_number"
                                             name="registration_number"
-                                            defaultValue={
-                                                vehicle?.registration_number ??
-                                                ''
-                                            }
+                                            value={registrationNumber}
+                                            onChange={(event) => {
+                                                setRegistrationNumber(
+                                                    event.target.value,
+                                                );
+                                                setRegistrationClientError(
+                                                    null,
+                                                );
+                                            }}
+                                            onBlur={() => {
+                                                const normalized =
+                                                    normalizeVehicleRegistration(
+                                                        registrationNumber,
+                                                    );
+                                                setRegistrationNumber(
+                                                    normalized,
+                                                );
+                                                if (
+                                                    normalized !== '' &&
+                                                    !isValidVehicleRegistration(
+                                                        normalized,
+                                                    )
+                                                ) {
+                                                    setRegistrationClientError(
+                                                        vehicleRegistrationInvalidMessage,
+                                                    );
+                                                }
+                                            }}
                                             required
+                                            aria-invalid={
+                                                registrationClientError
+                                                    ? true
+                                                    : undefined
+                                            }
                                         />
                                         <InputError
-                                            message={errors.registration_number}
+                                            message={
+                                                errors.registration_number ??
+                                                registrationClientError
+                                            }
                                         />
                                     </div>
                                     <div className="space-y-2">

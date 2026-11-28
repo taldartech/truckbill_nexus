@@ -268,7 +268,8 @@ export default function OwnerBranchesAll({
                                     variant="info"
                                 />
                             ) : null}
-                            {branch.urls.enter_branch_context ? (
+                            {branch.urls.enter_branch_context &&
+                            branch.company ? (
                                 <WorkspaceContextAction
                                     contextUrl={
                                         branch.urls.enter_branch_context
@@ -279,6 +280,14 @@ export default function OwnerBranchesAll({
                                     }
                                     icon={LogIn}
                                     label="Enter Branch Panel"
+                                    branchEntryConfirm={{
+                                        companyName: branch.company.name,
+                                        branchName: branch.name,
+                                        location:
+                                            [branch.city, branch.state]
+                                                .filter(Boolean)
+                                                .join(', ') || null,
+                                    }}
                                 />
                             ) : null}
                         </>
