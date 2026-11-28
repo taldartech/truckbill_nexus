@@ -20,7 +20,7 @@ require_once __DIR__.'/Support/ValidVehicleRegistration.php';
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
-    ->in('Feature')
+    ->in('Feature', 'LegacyParity')
     ->beforeEach(function (): void {
         // MySQL CI job does not run Vite build; Inertia HTML responses must not require the manifest.
         $this->withoutVite();

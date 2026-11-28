@@ -16,6 +16,7 @@ use App\Models\LorryHireCustomAmount;
 use App\Models\LorryHireGoodsLine;
 use App\Models\TransporterBookBalanceEntry;
 use App\Models\TransporterVoucher;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -214,8 +215,91 @@ final class LorryHireCalculationService
     {
         $basis = $this->money($freightTotal);
         $rate = bcdiv($this->money($tdsPercent, 3), '100', 6);
+        $raw = bcmul($basis, $rate, 6);
 
-        return $this->money(bcmul($basis, $rate, 6));
+        return $this->money($this->roundUpTdsAmount($raw));
+    }
+
+    /**
+     * Legacy roundUpTdsAmount — ceil fractional TDS to whole rupees.
+     *
+     * @param  numeric-string  $amount
+     * @return numeric-string
+     */
+    public function roundUpTdsAmount(string $amount): string
+    {
+        $rounded = ceil((float) bcadd($amount, '0', 6));
+
+        return (string) $rounded;
+    }
+
+    /**
+     * Historical outstanding for dispatch-style reports (legacy balanceAsOnDate).
+     *
+     * @return numeric-string
+     */
+    public function balanceDueAsOn(LorryHire $hire, string $asOnDate): string
+    {
+        $hire->loadMissing(['adjustments', 'vouchers', 'bookBalanceEntries', 'customAmounts']);
+        $summary = $this->summarize($hire);
+        $paidThrough = $this->paidVoucherAmountOnOrBefore($hire->vouchers, $asOnDate);
+
+        return bcsub($summary['net_payable'], $paidThrough, 2);
+    }
+
+    /**
+     * @return array{
+     *     cash: numeric-string,
+     *     bank: numeric-string,
+     *     fuel: numeric-string,
+     *     advance: numeric-string,
+     *     total_paid: numeric-string,
+     *     balance: numeric-string
+     * }
+     */
+    public function dispatchPaymentSummary(LorryHire $hire, ?string $asOnDate = null): array
+    {
+        $hire->loadMissing(['vouchers', 'adjustments', 'bookBalanceEntries', 'customAmounts']);
+        $vouchers = $asOnDate !== null
+            ? $this->vouchersOnOrBefore($hire->vouchers, $asOnDate)
+            : $hire->vouchers->filter(fn (TransporterVoucher $voucher): bool => $voucher->status === VoucherStatus::Paid);
+
+        $cash = '0.00';
+        $bank = '0.00';
+        $fuel = '0.00';
+        $advance = '0.00';
+        $totalPaid = '0.00';
+
+        foreach ($vouchers as $voucher) {
+            if ($voucher->status !== VoucherStatus::Paid) {
+                continue;
+            }
+            $amount = $this->money($voucher->amount);
+            $totalPaid = bcadd($totalPaid, $amount, 2);
+            $mode = $voucher->payment_mode;
+            if ($mode === VoucherPaymentMode::Cash) {
+                $cash = bcadd($cash, $amount, 2);
+            } elseif ($mode === VoucherPaymentMode::Bank) {
+                $bank = bcadd($bank, $amount, 2);
+            } elseif ($mode === VoucherPaymentMode::PaidToPump) {
+                $fuel = bcadd($fuel, $amount, 2);
+            } elseif ($mode === VoucherPaymentMode::AdjustInAdvance) {
+                $advance = bcadd($advance, $amount, 2);
+            }
+        }
+
+        $balance = $asOnDate !== null
+            ? $this->balanceDueAsOn($hire, $asOnDate)
+            : $this->summarize($hire)['balance_due'];
+
+        return [
+            'cash' => $cash,
+            'bank' => $bank,
+            'fuel' => $fuel,
+            'advance' => $advance,
+            'total_paid' => $totalPaid,
+            'balance' => $balance,
+        ];
     }
 
     /**
@@ -471,6 +555,42 @@ final class LorryHireCalculationService
         }
 
         return $paid;
+    }
+
+    /**
+     * @param  Collection<int, TransporterVoucher>  $vouchers
+     * @return numeric-string
+     */
+    public function paidVoucherAmountOnOrBefore(Collection $vouchers, string $asOnDate): string
+    {
+        $total = '0.00';
+        foreach ($this->vouchersOnOrBefore($vouchers, $asOnDate) as $voucher) {
+            $total = bcadd($total, $this->money($voucher->amount), 2);
+        }
+
+        return $total;
+    }
+
+    /**
+     * @param  Collection<int, TransporterVoucher>  $vouchers
+     * @return Collection<int, TransporterVoucher>
+     */
+    private function vouchersOnOrBefore(Collection $vouchers, string $asOnDate): Collection
+    {
+        $end = Carbon::parse($asOnDate)->endOfDay();
+
+        return $vouchers->filter(function (TransporterVoucher $voucher) use ($end): bool {
+            if ($voucher->status !== VoucherStatus::Paid) {
+                return false;
+            }
+
+            $date = $voucher->voucher_date;
+            if ($date === null) {
+                return false;
+            }
+
+            return $date->copy()->endOfDay()->lte($end);
+        })->values();
     }
 
     /**
