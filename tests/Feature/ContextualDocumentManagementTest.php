@@ -315,14 +315,15 @@ test('supporting document does not mark broker POD received and POD uploads stay
     ])->assertRedirect();
 
     contextualDocClaim($ctx, $ctx['member']);
-    $this->get(route('branch.broker.deliveries.index'))
+    $this->get(route('branch.documents.index', [
+        'parentType' => DocumentParentTypes::BROKER_DELIVERY,
+        'parentId' => $delivery->id,
+    ]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('recentDeliveries.0.documentDrawer.sections', [
-                ['key' => 'pod', 'title' => 'POD'],
-                ['key' => 'supporting', 'title' => 'Supporting Documents'],
-            ])
-            ->where('recentDeliveries.0.documentDrawer.attachments', fn ($attachments) => collect($attachments)
+            ->component('branch/masters/documents/index')
+            ->where('parent.type', DocumentParentTypes::BROKER_DELIVERY)
+            ->where('attachments', fn ($attachments) => collect($attachments)
                 ->mapWithKeys(fn (array $row): array => [$row['document_type'] => $row['section']])
                 ->sortKeys()
                 ->all() === [DocumentTypeCatalog::POD => 'pod', DocumentTypeCatalog::SUPPORTING => 'supporting']));

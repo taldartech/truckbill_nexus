@@ -178,11 +178,15 @@ test('broker POD upload via dedicated route and generic document route', functio
         ->exists())->toBeTrue();
 
     operationalDocClaim($ctx);
-    $this->get(route('branch.broker.deliveries.index'))
+    $this->get(route('branch.documents.index', [
+        'parentType' => DocumentParentTypes::BROKER_DELIVERY,
+        'parentId' => $delivery->id,
+    ]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('broker/deliveries/index')
-            ->has('recentDeliveries.0.documentDrawer'));
+            ->component('branch/masters/documents/index')
+            ->where('parent.type', DocumentParentTypes::BROKER_DELIVERY)
+            ->has('attachments', 1));
 
     operationalDocClaim($ctx);
     $this->post(route('branch.documents.store', [

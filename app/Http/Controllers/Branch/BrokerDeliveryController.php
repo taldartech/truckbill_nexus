@@ -8,13 +8,11 @@ use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Company\CompanyAccessService;
-use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Document\Exceptions\DocumentDomainException;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
-use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\BrokerDelivery;
@@ -28,57 +26,25 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class BrokerDeliveryController extends Controller
 {
     use AuthorizesBranchPanel;
-    use PresentsDocumentDrawer;
 
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly BrokerDeliveryService $deliveries,
-        private readonly DocumentAttachmentService $documents,
         private readonly FreightAmountPresentation $freightPresentation,
     ) {}
 
-    public function index(Request $request, Company $company, Branch $branch): Response
+    public function index(Request $request, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_DELIVERY_VIEW);
 
-        $eligible = $this->deliveries->searchEligible(
-            company: $company,
-            branch: $branch,
-            billingCustomerId: $request->string('billing_customer_party_id')->toString() ?: null,
-            perPage: min(100, max(1, (int) $request->input('per_page', 25))),
-        );
-
-        $recent = $this->deliveries->searchRecent($company, $branch, perPage: 10);
-
-        return Inertia::render('broker/deliveries/index', [
-            'filters' => [
-                'billing_customer_party_id' => $request->string('billing_customer_party_id')->toString(),
-            ],
-            'permissions' => $this->deliveryPermissions($actor, $company, $branch),
-            'eligible' => [
-                'data' => collect($eligible->items())->map(fn (LorryReceipt $lr): array => $this->eligiblePayload($lr))->values()->all(),
-                'meta' => [
-                    'current_page' => $eligible->currentPage(),
-                    'last_page' => $eligible->lastPage(),
-                    'total' => $eligible->total(),
-                    'per_page' => $eligible->perPage(),
-                ],
-            ],
-            'recentDeliveries' => collect($recent->items())->map(
-                fn (BrokerDelivery $delivery): array => $this->recentPayload($delivery, $actor, $company, $branch),
-            )->values()->all(),
-            'urls' => [
-                'index' => route('branch.broker.deliveries.index', absolute: false),
-                'lorry_hires' => route('branch.broker.lorry-hires.index', ['pending_memo' => 1], absolute: false),
-            ],
+        return redirect()->route('branch.broker.lorry-hires.index', [
+            'pending_memo' => 1,
         ]);
     }
 
@@ -180,7 +146,7 @@ class BrokerDeliveryController extends Controller
         }
 
         return redirect()
-            ->route('branch.broker.deliveries.index')
+            ->route('branch.broker.lorry-hires.index')
             ->with('success', 'Delivery recorded.');
     }
 
@@ -213,7 +179,7 @@ class BrokerDeliveryController extends Controller
         }
 
         return redirect()
-            ->route('branch.broker.deliveries.index')
+            ->route('branch.broker.lorry-hires.index')
             ->with('success', 'POD document uploaded.');
     }
 
@@ -236,90 +202,5 @@ class BrokerDeliveryController extends Controller
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
             abort(403, 'Not authorized for Broker delivery operation.');
         }
-    }
-
-    /**
-     * @return array{can_view: bool, can_manage: bool}
-     */
-    private function deliveryPermissions(User $actor, Company $company, Branch $branch): array
-    {
-        return [
-            'can_view' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_DELIVERY_VIEW, $company, $branch),
-            'can_manage' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_DELIVERY_MANAGE, $company, $branch),
-        ];
-    }
-
-    /**
-     * @return array{
-     *     id: string,
-     *     lr_number: string,
-     *     lr_date: string|null,
-     *     billing_customer_party_id: string|null,
-     *     billing_customer_name: string|null,
-     *     delivery_status: string|null,
-     *     memo_number: string|null,
-     *     urls: array{complete: string}
-     * }
-     */
-    private function eligiblePayload(LorryReceipt $lr): array
-    {
-        return [
-            'id' => $lr->id,
-            'lr_number' => $lr->lr_number,
-            'lr_date' => $lr->lr_date?->format('d-m-Y'),
-            'billing_customer_party_id' => $lr->billing_customer_party_id,
-            'billing_customer_name' => $lr->billingCustomer?->name,
-            'delivery_status' => $lr->delivery?->status?->value,
-            'memo_number' => $lr->delivery?->memo_number,
-            'urls' => [
-                'complete' => route('branch.broker.deliveries.complete', [$lr], absolute: false),
-            ],
-        ];
-    }
-
-    /**
-     * @return array{
-     *     id: string,
-     *     lr_number: string|null,
-     *     status: string,
-     *     memo_number: string|null,
-     *     pod_number: string|null,
-     *     delivery_date: string|null,
-     *     urls: array{pod: string, documents: string},
-     *     documentDrawer: array<string, mixed>|null
-     * }
-     */
-    private function recentPayload(BrokerDelivery $delivery, User $actor, Company $company, Branch $branch): array
-    {
-        $canManage = $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_DELIVERY_MANAGE, $company, $branch);
-
-        return [
-            'id' => $delivery->id,
-            'lr_number' => $delivery->lorryReceipt?->lr_number,
-            'status' => $delivery->status->value,
-            'memo_number' => $delivery->memo_number,
-            'pod_number' => $delivery->pod_number,
-            'delivery_date' => $delivery->delivery_date?->format('d-m-Y'),
-            'urls' => [
-                'pod' => route('branch.broker.deliveries.pod', [$delivery], absolute: false),
-                'documents' => route('branch.documents.index', [
-                    'parentType' => 'broker_delivery',
-                    'parentId' => $delivery->id,
-                ], absolute: false),
-            ],
-            'documentDrawer' => $this->documentDrawerPayload(
-                $actor,
-                $company,
-                $branch,
-                'broker_delivery',
-                $delivery->id,
-                $this->documents,
-                [
-                    'can_create' => $canManage,
-                    'can_edit' => $canManage,
-                    'can_delete' => $canManage,
-                ],
-            ),
-        ];
     }
 }

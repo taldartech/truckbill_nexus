@@ -30,7 +30,6 @@ export type WorkspaceNavigation = {
     broker_lorry_hires: boolean;
     broker_vouchers: boolean;
     broker_daily_payments: boolean;
-    broker_deliveries: boolean;
     broker_linked_bilties: boolean;
     broker_transporter_balances: boolean;
     customer_invoices: boolean;

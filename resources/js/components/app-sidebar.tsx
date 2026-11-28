@@ -230,15 +230,6 @@ export function AppSidebar() {
                   },
               ]
             : []),
-        ...(nav?.broker_deliveries
-            ? [
-                  {
-                      title: 'Delivery / Memo / POD',
-                      href: '/broker/deliveries',
-                      icon: Truck,
-                  },
-              ]
-            : []),
         ...(nav?.broker_linked_bilties
             ? [
                   {

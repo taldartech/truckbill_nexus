@@ -402,7 +402,6 @@ final class CompanyCapabilityResolver
             'broker_lorry_hires' => $capRead(CompanyCapabilities::BROKER_LORRY_HIRE) && $perm(PermissionCodes::BROKER_LORRY_HIRE_VIEW),
             'broker_vouchers' => $capRead(CompanyCapabilities::BROKER_VOUCHERS) && $perm(PermissionCodes::BROKER_VOUCHER_VIEW),
             'broker_daily_payments' => $capRead(CompanyCapabilities::BROKER_DAILY_PAYMENTS) && $perm(PermissionCodes::BROKER_VOUCHER_VIEW),
-            'broker_deliveries' => $capRead(CompanyCapabilities::BROKER_DELIVERIES) && $perm(PermissionCodes::BROKER_DELIVERY_VIEW),
             'broker_linked_bilties' => $capRead(CompanyCapabilities::BROKER_LINKED_BILTIES) && $perm(PermissionCodes::BROKER_LINKED_BILTY_VIEW),
             'broker_transporter_balances' => $capRead(CompanyCapabilities::BROKER_BOOK_BALANCE) && $perm(PermissionCodes::BROKER_BOOK_BALANCE_VIEW),
             'customer_invoices' => $capRead(CompanyCapabilities::CUSTOMER_INVOICES)

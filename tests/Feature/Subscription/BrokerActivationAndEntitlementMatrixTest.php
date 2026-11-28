@@ -288,7 +288,6 @@ test('broker purchase activates immediately without invoice approval and restore
             ->where('workspace.navigation.broker_lorry_hires', true)
             ->where('workspace.navigation.broker_vouchers', true)
             ->where('workspace.navigation.broker_daily_payments', true)
-            ->where('workspace.navigation.broker_deliveries', true)
             ->where('workspace.navigation.broker_linked_bilties', true)
             ->where('workspace.navigation.broker_transporter_balances', true)
             ->where('workspace.navigation.customer_invoices', true)
@@ -441,7 +440,6 @@ test('broker purchase activates immediately without invoice approval and restore
         'branch.broker.lorry-hires.index',
         'branch.broker.vouchers.index',
         'branch.broker.daily-payments.index',
-        'branch.broker.deliveries.index',
         'branch.broker.linked-bilties.index',
         'branch.broker.transporter-balances.index',
         'branch.broker.invoices.create',

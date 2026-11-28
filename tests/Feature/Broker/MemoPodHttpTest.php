@@ -111,6 +111,15 @@ test('good hires register exposes memo eligibility and the pending memo filter',
             ->where('lorryHires.data.0.memo_number', null));
 });
 
+test('legacy deliveries register URL redirects to good hires pending memo filter', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    actAsMemoOperator($ctx);
+
+    $this->get(route('branch.broker.deliveries.index'))
+        ->assertRedirect(route('branch.broker.lorry-hires.index', ['pending_memo' => 1], absolute: false));
+});
+
 test('memo / pod requires the memo number', function () {
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
