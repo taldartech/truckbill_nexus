@@ -11,6 +11,7 @@ use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
 use App\Domains\Broker\LorryHire\LorryHireCancellationService;
+use App\Domains\Broker\LorryHire\LorryHireOperationalDelivery;
 use App\Domains\Broker\LorryHire\LorryHireRevisionService;
 use App\Domains\Broker\LorryHire\LorryHireService;
 use App\Domains\Broker\Presentation\LorryHireRegisterPresenter;
@@ -358,6 +359,16 @@ class LorryHireController extends Controller
         $canCreateVoucher = $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_VOUCHER_CREATE, $company, $branch);
         $canEdit = $this->revisions->canEdit($actor, $company, $branch, $lorryHire);
         $deliveryPanel = $this->deliveryPanelPayload($lorryHire);
+        $canAssignMemo = $this->authorizer->allowsCustomer(
+            $actor,
+            PermissionCodes::BROKER_DELIVERY_MANAGE,
+            $company,
+            $branch,
+        );
+        $canMarkDelivered = $canAssignMemo
+            && $lorryHire->status !== LorryHireStatus::Cancelled
+            && $lorryHire->lorry_receipt_id !== null
+            && ! LorryHireOperationalDelivery::isDelivered($lorryHire);
 
         return Inertia::render('broker/lorry-hires/show', [
             'lorryHire' => $this->detailPayload($lorryHire, $maySeeFreight, $summary),
@@ -378,7 +389,10 @@ class LorryHireController extends Controller
                 'label' => ucwords(str_replace('_', ' ', $type->value)),
             ])->values()->all(),
             'fixed_adjustments' => $this->adjustments->snapshotFixedAdjustments($lorryHire),
-            'delivery' => $deliveryPanel,
+            'delivery' => array_merge($deliveryPanel, [
+                'can_mark_delivered' => $canMarkDelivered,
+                'lorry_receipt_id' => $lorryHire->lorry_receipt_id,
+            ]),
             'revisions' => $this->revisionHistoryPayload($lorryHire, $maySeeFreight),
             'permissions' => array_merge(
                 $this->lorryHirePermissions($actor, $company, $branch, $maySeeFreight),
@@ -407,6 +421,12 @@ class LorryHireController extends Controller
                     ? route('branch.broker.lorry-hires.memo-print', [$lorryHire], absolute: false)
                     : null,
                 'memo_update' => route('branch.broker.lorry-hires.memo-update', [$lorryHire], absolute: false),
+                'memo_context' => $canAssignMemo
+                    ? route('branch.broker.deliveries.memo-context', absolute: false)
+                    : null,
+                'memo_store' => $canAssignMemo
+                    ? route('branch.broker.deliveries.memo', absolute: false)
+                    : null,
             ],
         ]);
     }

@@ -27,3 +27,13 @@ export function formatInr(value: string | number | null | undefined): string {
 
     return Number.isNaN(amount) ? String(value) : inrFormatter.format(amount);
 }
+
+/** Presentation-only percent (server retains full calculation precision). */
+export function formatPercent(
+    value: string | number | null | undefined,
+    fractionDigits = 2,
+): string {
+    const amount = Number(value ?? 0);
+
+    return Number.isNaN(amount) ? '—' : `${amount.toFixed(fractionDigits)}%`;
+}

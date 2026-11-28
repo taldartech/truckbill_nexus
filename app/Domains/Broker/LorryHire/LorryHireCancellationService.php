@@ -9,6 +9,7 @@ use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\Voucher\TransporterBookBalanceService;
+use App\Domains\Broker\Voucher\TransporterVoucherService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
@@ -21,13 +22,14 @@ use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Presentation\Money;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Broker Lorry Hire cancellation with optional outstanding settlement (Rules §11).
+ * Broker Lorry Hire cancellation — recover only eligible paid voucher amounts to book (PO).
  */
 final class LorryHireCancellationService
 {
@@ -39,36 +41,17 @@ final class LorryHireCancellationService
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
         private readonly LorryHireCalculationService $calculations = new LorryHireCalculationService,
         private readonly TransporterBookBalanceService $bookBalance = new TransporterBookBalanceService,
+        private readonly TransporterVoucherService $vouchers = new TransporterVoucherService,
         private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     /**
-     * @return array{
-     *     freight_total: numeric-string,
-     *     tds_amount: numeric-string,
-     *     adjustments: list<array{
-     *         id: string,
-     *         type: string,
-     *         amount: numeric-string,
-     *         reason: string|null
-     *     }>,
-     *     vouchers: list<array{
-     *         id: string,
-     *         voucher_number: string,
-     *         amount: numeric-string,
-     *         status: string
-     *     }>,
-     *     net_payable: numeric-string,
-     *     outstanding_amount: numeric-string,
-     *     settle_yes_description: string,
-     *     settle_no_description: string
-     * }
+     * @return array<string, mixed>
      */
     public function preview(LorryHire $hire): array
     {
-        $hire->loadMissing(['adjustments', 'vouchers', 'bookBalanceEntries']);
-        $summary = $this->calculations->summarize($hire);
-        $outstanding = $summary['outstanding_amount'];
+        $hire->loadMissing(['adjustments', 'vouchers', 'bookBalanceEntries', 'transporter']);
+        $summary = $this->calculations->cancellationSettlement($hire);
 
         $adjustments = [];
         foreach ($hire->adjustments as $adjustment) {
@@ -87,24 +70,39 @@ final class LorryHireCancellationService
                 'voucher_number' => $voucher->voucher_number,
                 'amount' => $this->money($voucher->amount),
                 'status' => $voucher->status->value,
+                'payment_mode' => $voucher->payment_mode?->value,
             ];
         }
 
-        $formattedOutstanding = $this->formatSignedMoney($outstanding);
+        $eligibleTotal = $summary['eligible_settlement_total'];
+        $eligiblePaid = $summary['eligible_paid_voucher_settlement'];
+        $eligibleAdvance = $summary['eligible_advance_restore'];
 
         return [
+            'hire_number' => $hire->hire_number,
+            'transporter_name' => $hire->transporter?->name,
             'freight_total' => $summary['freight_total'],
             'tds_amount' => $summary['tds_amount'],
+            'net_payable' => $summary['net_payable'],
+            'paid_voucher_amount' => $summary['paid_voucher_amount'],
+            'pending_voucher_amount' => $summary['pending_voucher_amount'],
+            'in_progress_voucher_amount' => $summary['in_progress_voucher_amount'],
+            'unpaid_balance' => $summary['unpaid_balance'],
+            'outstanding_amount' => $summary['outstanding_amount'],
+            'balance_due' => $summary['balance_due'],
+            'negative_adjusted_amount' => $summary['negative_adjusted_amount'],
+            'eligible_paid_voucher_settlement' => $eligiblePaid,
+            'eligible_advance_restore' => $eligibleAdvance,
+            'eligible_settlement_total' => $eligibleTotal,
             'adjustments' => $adjustments,
             'vouchers' => $vouchers,
-            'net_payable' => $summary['net_payable'],
-            'outstanding_amount' => $outstanding,
-            'settle_yes_description' => bccomp($outstanding, '0', 2) === 0
-                ? 'There is no outstanding balance to transfer to the transporter book.'
-                : "Yes — transfer {$formattedOutstanding} to the transporter book balance (operational ledger).",
-            'settle_no_description' => bccomp($outstanding, '0', 2) === 0
-                ? 'Outstanding is already zero; it will remain on this cancelled Lorry Hire record.'
-                : "No — retain {$formattedOutstanding} against this cancelled Lorry Hire.",
+            'settle_yes_description' => bccomp($eligibleTotal, '0', 2) === 0
+                ? ''
+                : $this->settleYesDescription($eligiblePaid, $eligibleAdvance),
+            'settle_no_description' => bccomp($eligibleTotal, '0', 2) === 0
+                ? 'No eligible paid voucher amount is available for book settlement.'
+                : 'Keep paid voucher history on this cancelled hire without transferring amounts to the transporter book.',
+            'can_settle_to_book' => bccomp($eligibleTotal, '0', 2) === 1,
         ];
     }
 
@@ -130,7 +128,7 @@ final class LorryHireCancellationService
             ]);
         }
 
-        $settleOutstanding = $payload['settle_outstanding'];
+        $settleToBook = (bool) $payload['settle_outstanding'];
 
         $cancelledAt = filled($payload['cancelled_at'] ?? null)
             ? CarbonImmutable::parse((string) $payload['cancelled_at'])
@@ -142,7 +140,7 @@ final class LorryHireCancellationService
             $company,
             $branch,
             $reason,
-            $settleOutstanding,
+            $settleToBook,
             $cancelledAt,
         ): LorryHire {
             return $this->withTenant($company, $branch, function () use (
@@ -151,7 +149,7 @@ final class LorryHireCancellationService
                 $company,
                 $branch,
                 $reason,
-                $settleOutstanding,
+                $settleToBook,
                 $cancelledAt,
             ): LorryHire {
                 $locked = LorryHire::query()
@@ -164,22 +162,43 @@ final class LorryHireCancellationService
                     throw new BrokerConflictException('Lorry Hire is already cancelled.');
                 }
 
-                $locked->loadMissing(['adjustments', 'vouchers', 'bookBalanceEntries']);
-                $summary = $this->calculations->summarize($locked);
-                $outstanding = $summary['outstanding_amount'];
+                $this->vouchers->releaseUnpaidReservationsForCancelledHire($company, $branch, $actor, $locked);
 
-                if ($settleOutstanding && bccomp($outstanding, '0', 2) !== 0) {
-                    $this->bookBalance->createSignedEntry($company, $branch, $actor, [
-                        'transporter_party_id' => $locked->transporter_party_id,
-                        'lorry_hire_id' => $locked->id,
-                        'amount' => $outstanding,
-                        'entry_type' => BookBalanceEntryType::LorryHireCancellationSettlement,
-                        'entry_date' => $cancelledAt->toDateString(),
-                        'reference_number' => $locked->hire_number,
-                        'source_type' => TransporterBookBalanceService::SOURCE_LORRY_HIRE_CANCEL,
-                        'source_id' => $locked->id,
-                        'remark' => 'Lorry Hire cancellation settlement '.$locked->hire_number,
-                    ]);
+                $locked->refresh();
+                $locked->loadMissing(['adjustments', 'vouchers', 'bookBalanceEntries']);
+                $settlement = $this->calculations->cancellationSettlement($locked);
+
+                if ($settleToBook) {
+                    $eligiblePaid = $settlement['eligible_paid_voucher_settlement'];
+                    $eligibleAdvance = $settlement['eligible_advance_restore'];
+
+                    if (bccomp($eligiblePaid, '0', 2) === 1) {
+                        $this->bookBalance->createSignedEntry($company, $branch, $actor, [
+                            'transporter_party_id' => $locked->transporter_party_id,
+                            'lorry_hire_id' => $locked->id,
+                            'amount' => $eligiblePaid,
+                            'entry_type' => BookBalanceEntryType::LorryHireCancellationSettlement,
+                            'entry_date' => $cancelledAt->toDateString(),
+                            'reference_number' => $locked->hire_number,
+                            'source_type' => TransporterBookBalanceService::SOURCE_LORRY_HIRE_CANCEL,
+                            'source_id' => $locked->id,
+                            'remark' => 'Paid voucher recovery on Lorry Hire cancellation '.$locked->hire_number,
+                        ]);
+                    }
+
+                    if (bccomp($eligibleAdvance, '0', 2) === 1) {
+                        $this->bookBalance->createSignedEntry($company, $branch, $actor, [
+                            'transporter_party_id' => $locked->transporter_party_id,
+                            'lorry_hire_id' => $locked->id,
+                            'amount' => $eligibleAdvance,
+                            'entry_type' => BookBalanceEntryType::ReversalCompensation,
+                            'entry_date' => $cancelledAt->toDateString(),
+                            'reference_number' => $locked->hire_number,
+                            'source_type' => TransporterBookBalanceService::SOURCE_LORRY_HIRE_CANCEL_ADVANCE,
+                            'source_id' => $locked->id,
+                            'remark' => 'Restore advance consumed by paid vouchers — '.$locked->hire_number,
+                        ]);
+                    }
                 }
 
                 $before = [
@@ -191,11 +210,12 @@ final class LorryHireCancellationService
                     'status' => LorryHireStatus::Cancelled,
                     'cancelled_at' => $cancelledAt,
                     'cancellation_remark' => $reason,
-                    'settle_outstanding' => $settleOutstanding,
-                    'outstanding_amount' => $settleOutstanding && bccomp($outstanding, '0', 2) !== 0
-                        ? '0.00'
-                        : $this->money($locked->outstanding_amount),
+                    'settle_outstanding' => $settleToBook,
                 ])->save();
+
+                $this->vouchers->refreshHireBalances($locked->fresh() ?? $locked);
+
+                $locked = $locked->fresh() ?? $locked;
 
                 $this->audit->write(
                     AuditAction::Cancelled,
@@ -205,7 +225,7 @@ final class LorryHireCancellationService
                     before: $before,
                     after: [
                         'status' => LorryHireStatus::Cancelled->value,
-                        'settle_outstanding' => $settleOutstanding,
+                        'settle_outstanding' => $settleToBook,
                         'outstanding_amount' => $locked->outstanding_amount,
                     ],
                     cancellationReason: $reason,
@@ -226,6 +246,19 @@ final class LorryHireCancellationService
                 ]) ?? $locked;
             });
         });
+    }
+
+    private function settleYesDescription(string $eligiblePaid, string $eligibleAdvance): string
+    {
+        $parts = [];
+        if (bccomp($eligiblePaid, '0', 2) === 1) {
+            $parts[] = 'transfer eligible paid voucher amount of '.Money::inr($eligiblePaid).' to the Transporter Book Balance';
+        }
+        if (bccomp($eligibleAdvance, '0', 2) === 1) {
+            $parts[] = 'restore '.Money::inr($eligibleAdvance).' of previously consumed advance to the book balance';
+        }
+
+        return 'Yes — '.implode('; ', $parts).'.';
     }
 
     private function assertCanCancel(User $actor, Company $company, Branch $branch): void
@@ -258,19 +291,6 @@ final class LorryHireCancellationService
         }
 
         return number_format((float) $value, 2, '.', '');
-    }
-
-    /**
-     * @param  numeric-string  $amount
-     */
-    private function formatSignedMoney(string $amount): string
-    {
-        $zero = '0.00';
-        if (bccomp($amount, $zero, 2) < 0) {
-            return '₹'.number_format((float) bcsub($zero, $amount, 2), 2).' (overpaid)';
-        }
-
-        return '₹'.number_format((float) $amount, 2);
     }
 
     /**

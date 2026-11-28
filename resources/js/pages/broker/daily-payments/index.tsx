@@ -1,4 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
+import { formatInr } from '@/lib/money';
 import { Eye } from 'lucide-react';
 import { useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
@@ -16,8 +17,11 @@ type VoucherRow = {
     id: string;
     voucher_number: string;
     status: string;
+    status_label?: string;
     payment_mode: string | null;
+    payment_mode_label?: string | null;
     payment_type: string;
+    payment_type_label?: string;
     amount: string | null;
     lr_number: string | null;
     transporter_name: string | null;
@@ -124,7 +128,9 @@ export default function DailyPaymentsIndex({
                     <div className="daily-payments-totals">
                         <span>Vouchers: {totals.count}</span>
                         {permissions.can_view_freight && totals.amount ? (
-                            <span>Total amount: ₹{totals.amount}</span>
+                            <span>
+                                Total Amount: {formatInr(totals.amount)}
+                            </span>
                         ) : null}
                     </div>
 
@@ -225,14 +231,25 @@ export default function DailyPaymentsIndex({
                                             </td>
                                             <td>{row.source ?? '—'}</td>
                                             <td>{row.destination ?? '—'}</td>
-                                            <td>{row.payment_type ?? '—'}</td>
-                                            <td>{row.payment_mode ?? '—'}</td>
+                                            <td>
+                                                {row.payment_type_label ??
+                                                    row.payment_type ??
+                                                    '—'}
+                                            </td>
+                                            <td>
+                                                {row.payment_mode_label ??
+                                                    row.payment_mode ??
+                                                    '—'}
+                                            </td>
                                             <td className="text-end tabular-nums">
                                                 {row.amount ?? '—'}
                                             </td>
                                             <td>
                                                 <WorkspaceStatusBadge
-                                                    status={row.status}
+                                                    status={
+                                                        row.status_label ??
+                                                        row.status
+                                                    }
                                                 />
                                             </td>
                                             <td className="text-nowrap tabular-nums">
@@ -274,10 +291,13 @@ export default function DailyPaymentsIndex({
                                                             }}
                                                         >
                                                             Mark{' '}
-                                                            {row.next_status.replaceAll(
-                                                                '_',
-                                                                ' ',
-                                                            )}
+                                                            {row.next_status ===
+                                                            'in_progress'
+                                                                ? 'In Progress'
+                                                                : row.next_status ===
+                                                                    'paid'
+                                                                  ? 'Paid'
+                                                                  : row.next_status}
                                                         </Button>
                                                     ) : null}
                                                     <AppIconAction

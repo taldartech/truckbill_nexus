@@ -3,7 +3,7 @@
 **Assignment:** Legacy test case execution & functional parity certification  
 **Initial HEAD (assignment):** `3d87e815ce371a6cabffacdf8dded559933b5e6f`  
 **Prior certification HEAD:** `a61a308` (adjustment migration batch)  
-**Register updated HEAD:** `7addde8` (module batches + scenario sync); docs pass follows in next commit  
+**Register updated HEAD:** _(see git after broker cancellation / UI batch)_  
 **Scenario catalog:** `docs/engineering/LEGACY_SCENARIO_CATALOG.json` (**1,490** scenarios)  
 **Scenario outcomes (explicit):** `docs/engineering/LEGACY_SCENARIO_EXECUTION_REGISTER.json` → sync via `php scripts/sync-legacy-scenario-execution.php`  
 **Batch runner log:** `docs/engineering/LEGACY_CERTIFICATION_EXECUTION.json`  
@@ -70,6 +70,8 @@
 | **Total**       |     **463** | **463 PASS** | Focused batches only — not full Nexus suite               |
 
 **Defects fixed this batch:** invalid test vehicle registrations (`tests/Support/ValidVehicleRegistration.php`); enquiry party selector fields; broker entitlement matrix plate; **Lorry Hire edit + unloading weight** requires delivered LR before fixed-adjustment sync (`LorryHireEditTest`).
+
+**P0 (2026-11-28):** Lorry Hire cancellation transferred full **outstanding** to Transporter Book — corrected to **eligible paid voucher amounts only** (`LorryHireCancellationService`, `LorryHireCalculationService::cancellationSettlement`). Pending/In Progress reservations released on cancel (`TransporterVoucherService::releaseUnpaidReservationsForCancelledHire`).
 
 ### Batch A — Database upgrade blocker
 

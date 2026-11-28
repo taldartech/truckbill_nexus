@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { formatInr, formatInrPlain } from '@/lib/money';
+import { formatInr, formatInrPlain, formatPercent } from '@/lib/money';
 
 type Option = { value: string; label: string };
 
@@ -503,7 +503,9 @@ export function VoucherPaymentDialog({
                                     />
                                     <Fact
                                         label="TDS Percentage"
-                                        value={context.payee.tds_percent}
+                                        value={formatPercent(
+                                            context.payee.tds_percent,
+                                        )}
                                     />
                                     <Fact
                                         label="Truck Number"

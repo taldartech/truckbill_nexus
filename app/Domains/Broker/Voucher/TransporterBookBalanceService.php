@@ -40,6 +40,8 @@ final class TransporterBookBalanceService
 
     public const SOURCE_LORRY_HIRE_CANCEL = 'lorry_hire_cancellation';
 
+    public const SOURCE_LORRY_HIRE_CANCEL_ADVANCE = 'lorry_hire_cancel_advance_restore';
+
     public const SOURCE_MANUAL_TRANSACTION = 'manual_book_balance';
 
     public function __construct(

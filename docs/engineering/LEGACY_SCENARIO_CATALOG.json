@@ -1,6 +1,6 @@
 {
     "generated_at": "2026-11-28T12:11:38+00:00",
-    "nexus_head": "3d87e815ce371a6cabffacdf8dded559933b5e6f",
+    "nexus_head": "6a3d5ab260f5bcccabba978ad220d98000a702cc",
     "scenarios": [
         {
             "id": "LEG-BRO-00001",
@@ -13430,5 +13430,5 @@
     "totals": {
         "scenarios": 1490
     },
-    "scenario_execution_synced_at": "2026-11-28T12:42:58+00:00"
+    "scenario_execution_synced_at": "2026-11-28T12:56:29+00:00"
 }

@@ -455,7 +455,54 @@ final class TransporterVoucherService
         };
     }
 
-    private function refreshHireBalances(LorryHire $hire): void
+    /**
+     * Release Pending / In Progress vouchers when a Lorry Hire is cancelled.
+     */
+    public function releaseUnpaidReservationsForCancelledHire(
+        Company $company,
+        Branch $branch,
+        User $actor,
+        LorryHire $hire,
+    ): void {
+        $hire->loadMissing('vouchers');
+
+        foreach ($hire->vouchers as $voucher) {
+            if (! in_array($voucher->status, [VoucherStatus::Pending, VoucherStatus::InProgress], true)) {
+                continue;
+            }
+
+            if ($voucher->payment_mode === VoucherPaymentMode::AdjustInAdvance) {
+                $this->bookBalance->createSignedEntry($company, $branch, $actor, [
+                    'transporter_party_id' => $hire->transporter_party_id,
+                    'lorry_hire_id' => $hire->id,
+                    'transporter_voucher_id' => $voucher->id,
+                    'amount' => $this->money($voucher->amount),
+                    'entry_type' => BookBalanceEntryType::ReversalCompensation,
+                    'entry_date' => now()->toDateString(),
+                    'reference_number' => $voucher->voucher_number,
+                    'source_type' => 'transporter_voucher_cancelled',
+                    'source_id' => $voucher->id,
+                    'remark' => 'Released Adjust in Advance reservation for cancelled hire '.$hire->hire_number,
+                ]);
+            }
+
+            $before = $voucher->toArray();
+            $voucher->delete();
+
+            $this->audit->write(
+                AuditAction::Deleted,
+                TransporterVoucher::class,
+                $voucher->id,
+                remark: 'Released unpaid voucher reservation for cancelled Lorry Hire '.$hire->hire_number,
+                before: $before,
+                after: null,
+            );
+        }
+
+        $this->refreshHireBalances($hire->fresh() ?? $hire);
+    }
+
+    public function refreshHireBalances(LorryHire $hire): void
     {
         $hire->load(['adjustments', 'vouchers', 'bookBalanceEntries']);
         $summary = $this->calculations->summarize($hire);

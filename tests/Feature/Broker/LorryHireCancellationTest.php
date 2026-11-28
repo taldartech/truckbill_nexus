@@ -2,10 +2,14 @@
 
 use App\Domains\Broker\Enums\BookBalanceEntryType;
 use App\Domains\Broker\Enums\LorryHireStatus;
+use App\Domains\Broker\Enums\VoucherPaymentMode;
+use App\Domains\Broker\Enums\VoucherPaymentType;
+use App\Domains\Broker\Enums\VoucherStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\LorryHire\LorryHireCancellationService;
 use App\Domains\Broker\Voucher\TransporterBookBalanceService;
+use App\Domains\Broker\Voucher\TransporterVoucherService;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Exceptions\LorryReceiptConflictException;
 use App\Domains\Consignment\Exceptions\LorryReceiptDomainException;
@@ -28,6 +32,7 @@ beforeEach(function () {
     (new SubscriptionCatalogueSeeder)->run();
     (new TdsReferenceRulesSeeder)->run();
     brokerGrantLorryHirePermissions();
+    brokerGrantVoucherPermissions();
     foreach ([PermissionCodes::LR_CANCEL, PermissionCodes::LR_DELETE] as $code) {
         tripGrant('customer.admin', $code);
     }
@@ -37,13 +42,14 @@ afterEach(function () {
     TenantContextHolder::clear();
 });
 
-test('cancel with settle yes creates book balance entry and marks hire cancelled', function () {
+test('cancel with settle yes and no paid vouchers does not transfer unpaid freight to book', function () {
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
     $hire = brokerCreateLorryHire($ctx);
     $service = app(LorryHireCancellationService::class);
 
-    $outstanding = (string) $hire->fresh()->outstanding_amount;
+    $outstandingBefore = (string) $hire->fresh()->outstanding_amount;
+    expect(bccomp($outstandingBefore, '0', 2))->toBe(1);
 
     $cancelled = $service->cancel($hire, $ctx['member'], [
         'reason' => 'Transporter unavailable',
@@ -52,7 +58,40 @@ test('cancel with settle yes creates book balance entry and marks hire cancelled
 
     expect($cancelled->status)->toBe(LorryHireStatus::Cancelled)
         ->and($cancelled->settle_outstanding)->toBeTrue()
-        ->and((string) $cancelled->outstanding_amount)->toBe('0.00');
+        ->and(bccomp((string) $cancelled->outstanding_amount, '0', 2))->toBe(1);
+
+    expect(
+        TransporterBookBalanceEntry::query()
+            ->where('source_type', TransporterBookBalanceService::SOURCE_LORRY_HIRE_CANCEL)
+            ->where('source_id', $hire->id)
+            ->exists(),
+    )->toBeFalse();
+});
+
+test('cancel with settle yes transfers only paid cash voucher amount to book', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = brokerCreateLorryHire($ctx);
+
+    $voucher = app(TransporterVoucherService::class)->createForLorryHire($hire, $ctx['member'], [
+        'amount' => '2500.00',
+        'payment_type' => VoucherPaymentType::Advance->value,
+        'payment_mode' => VoucherPaymentMode::Cash->value,
+    ]);
+    app(TransporterVoucherService::class)->transitionStatus($voucher, $ctx['member'], VoucherStatus::Paid);
+
+    $service = app(LorryHireCancellationService::class);
+    $preview = $service->preview($hire->fresh());
+
+    expect($preview['eligible_paid_voucher_settlement'])->toBe('2500.00')
+        ->and(bccomp($preview['unpaid_balance'], '0', 2))->toBe(1);
+
+    $cancelled = $service->cancel($hire->fresh(), $ctx['member'], [
+        'reason' => 'Load dropped',
+        'settle_outstanding' => true,
+    ]);
+
+    expect($cancelled->status)->toBe(LorryHireStatus::Cancelled);
 
     $entry = TransporterBookBalanceEntry::query()
         ->where('source_type', TransporterBookBalanceService::SOURCE_LORRY_HIRE_CANCEL)
@@ -61,7 +100,7 @@ test('cancel with settle yes creates book balance entry and marks hire cancelled
 
     expect($entry)->not->toBeNull()
         ->and($entry->entry_type)->toBe(BookBalanceEntryType::LorryHireCancellationSettlement)
-        ->and((string) $entry->amount)->toBe($outstanding);
+        ->and((string) $entry->amount)->toBe('2500.00');
 });
 
 test('cancel with settle no retains outstanding and creates no book entry', function () {

@@ -1,5 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import { AppIconAction } from '@/components/app-icon-action';
+import { MemoPodDialog } from '@/components/broker/memo-pod-dialog';
 import { VoucherPaymentDialog } from '@/components/broker/voucher-payment-dialog';
 import {
     FbDetailCard,
@@ -14,6 +15,7 @@ import {
     ArrowLeft,
     ExternalLink,
     FileText,
+    PackageCheck,
     Pencil,
     Printer,
     Wallet,
@@ -21,6 +23,7 @@ import {
 import { DisplayDate } from '@/components/display-date';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatKgAsMt2, formatRate2 } from '@/lib/decimal-format';
+import { formatInr } from '@/lib/money';
 import { useMemo, useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type {
@@ -120,10 +123,20 @@ type Props = {
         settle_outstanding: boolean | null;
     };
     cancelPreview: {
+        hire_number?: string;
+        transporter_name?: string | null;
         freight_total: string;
         tds_amount: string;
         net_payable: string;
+        paid_voucher_amount?: string;
+        pending_voucher_amount?: string;
+        in_progress_voucher_amount?: string;
+        unpaid_balance?: string;
         outstanding_amount: string;
+        eligible_paid_voucher_settlement?: string;
+        eligible_advance_restore?: string;
+        eligible_settlement_total?: string;
+        can_settle_to_book?: boolean;
         settle_yes_description: string;
         settle_no_description: string;
         adjustments: Array<{
@@ -157,6 +170,8 @@ type Props = {
         delivery_date: string | null;
         lr_delivered_at: string | null;
         lr_status: string | null;
+        can_mark_delivered?: boolean;
+        lorry_receipt_id?: string | null;
     };
     permissions: {
         can_cancel?: boolean;
@@ -179,6 +194,8 @@ type Props = {
         print?: string;
         memo_print?: string | null;
         memo_update?: string;
+        memo_context?: string | null;
+        memo_store?: string | null;
     };
 };
 
@@ -192,6 +209,7 @@ export default function LorryHireShow({
     permissions,
     urls,
 }: Props) {
+    const [memoPodOpen, setMemoPodOpen] = useState(false);
     const [paymentOpen, setPaymentOpen] = useState(
         () =>
             Boolean(permissions.can_pay) &&
@@ -221,7 +239,7 @@ export default function LorryHireShow({
 
     const cancelForm = useForm({
         reason: '',
-        settle_outstanding: true as boolean,
+        settle_outstanding: (cancelPreview?.can_settle_to_book ?? false) as boolean,
     });
     const memoForm = useForm({
         memo_number: delivery.memo_number ?? '',
@@ -256,15 +274,31 @@ export default function LorryHireShow({
                 value: cancelPreview.net_payable,
             },
             {
-                label: 'Outstanding',
-                value: cancelPreview.outstanding_amount,
+                label: 'Paid voucher amount',
+                value: cancelPreview.paid_voucher_amount ?? '0.00',
             },
             {
-                label: 'Settle outstanding',
-                value: cancelForm.data.settle_outstanding
-                    ? cancelPreview.settle_yes_description
-                    : cancelPreview.settle_no_description,
+                label: 'Unpaid balance',
+                value: cancelPreview.unpaid_balance ?? cancelPreview.outstanding_amount,
             },
+            {
+                label: 'Eligible book settlement',
+                value:
+                    cancelPreview.eligible_settlement_total &&
+                    cancelPreview.eligible_settlement_total !== '0.00'
+                        ? formatInr(cancelPreview.eligible_settlement_total)
+                        : 'None',
+            },
+            ...(cancelPreview.can_settle_to_book
+                ? [
+                      {
+                          label: 'Settlement choice',
+                          value: cancelForm.data.settle_outstanding
+                              ? cancelPreview.settle_yes_description
+                              : cancelPreview.settle_no_description,
+                      },
+                  ]
+                : []),
             {
                 label: 'Reason',
                 value:
@@ -889,7 +923,20 @@ export default function LorryHireShow({
                                         value={delivery.pod_number}
                                     />
                                 </FbInfoGrid>
-                                {permissions.can_manage_delivery ? (
+                                {delivery.can_mark_delivered &&
+                                delivery.lorry_receipt_id &&
+                                urls.memo_context &&
+                                urls.memo_store ? (
+                                    <div className="flex flex-wrap gap-2 border-t border-slate-100 px-4 py-3">
+                                        <AppIconAction
+                                            icon={PackageCheck}
+                                            label="Mark as Delivered (Memo / POD)"
+                                            variant="primary"
+                                            size="sm"
+                                            onClick={() => setMemoPodOpen(true)}
+                                        />
+                                    </div>
+                                ) : permissions.can_manage_delivery ? (
                                     <div className="border-t border-slate-100 px-4 py-3">
                                         <AppIconAction
                                             icon={ExternalLink}
@@ -944,24 +991,41 @@ export default function LorryHireShow({
                                                 value={lorryHire.net_payable}
                                             />
                                             <PreviewField
-                                                label="Balance Due"
+                                                label="Paid voucher amount"
                                                 value={
-                                                    lorryHire.balance_due ??
-                                                    lorryHire.outstanding_amount
-                                                }
-                                            />
-                                            <PreviewField
-                                                label="Negative Adjusted Amount"
-                                                value={
-                                                    lorryHire.negative_adjusted_amount ??
+                                                    cancelPreview.paid_voucher_amount ??
                                                     '0.00'
                                                 }
                                             />
+                                            <PreviewField
+                                                label="Pending / In Progress"
+                                                value={`${cancelPreview.pending_voucher_amount ?? '0.00'} / ${cancelPreview.in_progress_voucher_amount ?? '0.00'}`}
+                                            />
+                                            <PreviewField
+                                                label="Unpaid balance"
+                                                value={
+                                                    cancelPreview.unpaid_balance ??
+                                                    cancelPreview.outstanding_amount
+                                                }
+                                            />
+                                            <PreviewField
+                                                label="Eligible book settlement"
+                                                value={
+                                                    cancelPreview.eligible_settlement_total &&
+                                                    cancelPreview.eligible_settlement_total !==
+                                                        '0.00'
+                                                        ? formatInr(
+                                                              cancelPreview.eligible_settlement_total,
+                                                          )
+                                                        : 'None'
+                                                }
+                                            />
                                         </dl>
+                                        {cancelPreview.can_settle_to_book ? (
                                         <fieldset className="space-y-2">
                                             <legend className="text-sm font-medium">
-                                                Settle outstanding to
-                                                transporter book?
+                                                Recover eligible paid voucher
+                                                amounts to transporter book?
                                             </legend>
                                             <label className="flex cursor-pointer items-start gap-2 text-sm">
                                                 <input
@@ -1010,6 +1074,14 @@ export default function LorryHireShow({
                                                 </span>
                                             </label>
                                         </fieldset>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">
+                                                No eligible paid voucher amount
+                                                is available for book settlement.
+                                                Unpaid transporter liability
+                                                will not be transferred.
+                                            </p>
+                                        )}
                                         <div>
                                             <Label htmlFor="cancel_reason">
                                                 Reason (required)
@@ -1157,6 +1229,24 @@ export default function LorryHireShow({
                         urls={{
                             payment_context: urls.payment_context,
                             voucher_store: urls.voucher_store,
+                        }}
+                    />
+                ) : null}
+
+                {delivery.can_mark_delivered &&
+                delivery.lorry_receipt_id &&
+                urls.memo_context &&
+                urls.memo_store ? (
+                    <MemoPodDialog
+                        open={memoPodOpen}
+                        onOpenChange={setMemoPodOpen}
+                        lorryReceiptIds={[delivery.lorry_receipt_id]}
+                        urls={{
+                            memo_context: urls.memo_context,
+                            memo_store: urls.memo_store,
+                        }}
+                        onAssigned={() => {
+                            setMemoPodOpen(false);
                         }}
                     />
                 ) : null}

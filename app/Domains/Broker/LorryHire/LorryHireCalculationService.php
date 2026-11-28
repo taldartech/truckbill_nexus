@@ -4,7 +4,9 @@ namespace App\Domains\Broker\LorryHire;
 
 use App\Domains\Broker\Enums\BookBalanceEntryType;
 use App\Domains\Broker\Enums\BrokerAdjustmentType;
+use App\Domains\Broker\Enums\VoucherPaymentMode;
 use App\Domains\Broker\Enums\VoucherStatus;
+use App\Domains\Broker\Voucher\TransporterBookBalanceService;
 use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Freight\FreightCalculator;
@@ -337,6 +339,122 @@ final class LorryHireCalculationService
             'in_progress_voucher_amount' => $inProgress,
             'pending_voucher_amount' => $pending,
         ];
+    }
+
+    /**
+     * Cancellation confirmation amounts — only paid voucher cash/bank (and advance restore) may transfer to book.
+     *
+     * @return array{
+     *     freight_total: numeric-string,
+     *     tds_amount: numeric-string,
+     *     net_payable: numeric-string,
+     *     outstanding_amount: numeric-string,
+     *     balance_due: numeric-string,
+     *     negative_adjusted_amount: numeric-string,
+     *     reserved_voucher_amount: numeric-string,
+     *     remaining_payable: numeric-string,
+     *     paid_voucher_amount: numeric-string,
+     *     in_progress_voucher_amount: numeric-string,
+     *     pending_voucher_amount: numeric-string,
+     *     unpaid_balance: numeric-string,
+     *     eligible_paid_voucher_settlement: numeric-string,
+     *     eligible_advance_restore: numeric-string,
+     *     eligible_settlement_total: numeric-string
+     * }
+     */
+    public function cancellationSettlement(LorryHire $hire): array
+    {
+        $hire->loadMissing(['adjustments', 'vouchers', 'bookBalanceEntries', 'customAmounts']);
+        $summary = $this->summarize($hire);
+
+        $paidCashBank = $this->paidVoucherAmountForModes(
+            $hire->vouchers,
+            [
+                VoucherPaymentMode::Bank,
+                VoucherPaymentMode::Cash,
+                VoucherPaymentMode::PaidToPump,
+            ],
+        );
+        $paidAdjust = $this->paidVoucherAmountForModes(
+            $hire->vouchers,
+            [VoucherPaymentMode::AdjustInAdvance],
+        );
+
+        $priorCashRecovery = $this->priorBookRecovery(
+            $hire,
+            BookBalanceEntryType::LorryHireCancellationSettlement,
+        );
+        $priorAdvanceRestore = $this->priorBookRecovery(
+            $hire,
+            BookBalanceEntryType::ReversalCompensation,
+            TransporterBookBalanceService::SOURCE_LORRY_HIRE_CANCEL_ADVANCE,
+        );
+
+        $eligiblePaid = bcsub($paidCashBank, $priorCashRecovery, 2);
+        if (bccomp($eligiblePaid, '0', 2) < 0) {
+            $eligiblePaid = '0.00';
+        }
+
+        $eligibleAdvance = bcsub($paidAdjust, $priorAdvanceRestore, 2);
+        if (bccomp($eligibleAdvance, '0', 2) < 0) {
+            $eligibleAdvance = '0.00';
+        }
+
+        $eligibleTotal = bcadd($eligiblePaid, $eligibleAdvance, 2);
+
+        return array_merge($summary, [
+            'unpaid_balance' => $summary['balance_due'],
+            'eligible_paid_voucher_settlement' => $eligiblePaid,
+            'eligible_advance_restore' => $eligibleAdvance,
+            'eligible_settlement_total' => $eligibleTotal,
+        ]);
+    }
+
+    /**
+     * @param  Collection<int, TransporterVoucher>  $vouchers
+     * @param  list<VoucherPaymentMode>  $modes
+     * @return numeric-string
+     */
+    private function paidVoucherAmountForModes(Collection $vouchers, array $modes): string
+    {
+        $total = '0.00';
+        foreach ($vouchers as $voucher) {
+            if ($voucher->status !== VoucherStatus::Paid) {
+                continue;
+            }
+            $mode = $voucher->payment_mode;
+            if ($mode === null || ! in_array($mode, $modes, true)) {
+                continue;
+            }
+            $total = bcadd($total, $this->money($voucher->amount), 2);
+        }
+
+        return $total;
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function priorBookRecovery(
+        LorryHire $hire,
+        BookBalanceEntryType $type,
+        ?string $sourceType = TransporterBookBalanceService::SOURCE_LORRY_HIRE_CANCEL,
+    ): string {
+        $total = '0.00';
+        foreach ($hire->bookBalanceEntries as $entry) {
+            if ($entry->entry_type !== $type) {
+                continue;
+            }
+            if ($sourceType !== null && $entry->source_type !== $sourceType) {
+                continue;
+            }
+            if ($entry->lorry_hire_id !== $hire->id) {
+                continue;
+            }
+            $total = bcadd($total, $this->money($entry->amount), 2);
+        }
+
+        return $total;
     }
 
     /**

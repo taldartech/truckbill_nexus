@@ -437,11 +437,38 @@ export function SearchableCombobox({
         };
         update();
 
+        const scrollRoots: (HTMLElement | Window)[] = [window];
+        let el = triggerRef.current?.parentElement;
+        while (el) {
+            const style = window.getComputedStyle(el);
+            if (
+                /(auto|scroll)/.test(style.overflowY) ||
+                /(auto|scroll)/.test(style.overflow)
+            ) {
+                scrollRoots.push(el);
+            }
+            if (el.getAttribute('role') === 'dialog') {
+                break;
+            }
+            el = el.parentElement;
+        }
+
         window.addEventListener('resize', update);
         window.addEventListener('scroll', update, true);
+        for (const root of scrollRoots) {
+            if (!(root instanceof Window)) {
+                root.addEventListener('scroll', update, { passive: true });
+            }
+        }
+
         return () => {
             window.removeEventListener('resize', update);
             window.removeEventListener('scroll', update, true);
+            for (const root of scrollRoots) {
+                if (!(root instanceof Window)) {
+                    root.removeEventListener('scroll', update);
+                }
+            }
         };
     }, [open, filtered.length, loading]);
 
