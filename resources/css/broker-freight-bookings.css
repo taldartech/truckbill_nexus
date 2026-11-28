@@ -112,11 +112,6 @@
     width: 100px;
 }
 
-.freight-bookings-index #freightBookingsTable tr.is-row-cancelled td {
-    background: rgba(239, 68, 68, 0.06);
-    color: rgb(127, 29, 29);
-}
-
 .freight-bookings-index
     #freightBookingsTable
     tr.is-row-cancelled

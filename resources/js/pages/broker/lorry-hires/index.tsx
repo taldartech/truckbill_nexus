@@ -13,9 +13,14 @@ import { BulkSelectionToolbar } from '@/components/bulk-selection-toolbar';
 import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useCrossPageSelection } from '@/hooks/use-cross-page-selection';
 import { DisplayDate } from '@/components/display-date';
-import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatRate2, formatWeightMt2 } from '@/lib/decimal-format';
 
 type HireRow = {
@@ -565,21 +570,7 @@ export default function LorryHiresIndex({
                                                 />
                                             </td>
                                             <td className="font-medium">
-                                                <div className="flex flex-col gap-1">
-                                                    <span>
-                                                        {row.lr_number ?? '—'}
-                                                    </span>
-                                                    {row.status ===
-                                                    'cancelled' ? (
-                                                        <span className="inline-flex items-center gap-1">
-                                                            <Ban
-                                                                className="size-3.5 text-destructive"
-                                                                aria-hidden
-                                                            />
-                                                            <WorkspaceStatusBadge status="cancelled" />
-                                                        </span>
-                                                    ) : null}
-                                                </div>
+                                                {row.lr_number ?? '—'}
                                             </td>
                                             <td>
                                                 {row.billing_customer_name ??
@@ -640,6 +631,29 @@ export default function LorryHiresIndex({
                                                             href={row.urls.edit}
                                                             variant="outline"
                                                         />
+                                                    ) : null}
+                                                    {row.status ===
+                                                    'cancelled' ? (
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger
+                                                                    asChild
+                                                                >
+                                                                    <span
+                                                                        className="inline-flex size-8 shrink-0 items-center justify-center text-destructive"
+                                                                        aria-label="Cancelled"
+                                                                    >
+                                                                        <Ban
+                                                                            className="size-4"
+                                                                            aria-hidden
+                                                                        />
+                                                                    </span>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    Cancelled
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
                                                     ) : null}
                                                 </div>
                                             </td>

@@ -12,7 +12,6 @@ import {
 } from '@/components/fb-detail';
 import {
     ArrowLeft,
-    Ban,
     ExternalLink,
     FileText,
     Pencil,
@@ -339,21 +338,11 @@ export default function LorryHireShow({
                             <FbDetailCard
                                 title={`Good Hire Information (${lorryHire.hire_number})`}
                                 badges={
-                                    <>
-                                        {lorryHire.status === 'cancelled' ? (
-                                            <span className="inline-flex items-center gap-1">
-                                                <Ban
-                                                    className="size-3.5 text-destructive"
-                                                    aria-hidden
-                                                />
-                                                <WorkspaceStatusBadge status="cancelled" />
-                                            </span>
-                                        ) : (
-                                            <WorkspaceStatusBadge
-                                                status={lorryHire.status}
-                                            />
-                                        )}
-                                    </>
+                                    lorryHire.status !== 'cancelled' ? (
+                                        <WorkspaceStatusBadge
+                                            status={lorryHire.status}
+                                        />
+                                    ) : undefined
                                 }
                                 actions={
                                     <>
