@@ -72,7 +72,13 @@ final class TransporterVoucherService
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
             ->whereNull('deleted_at')
-            ->with(['lorryHire.lorryReceipt', 'lorryHire.vehicle'])
+            ->with([
+                'lorryHire.lorryReceipt.billingCustomer',
+                'lorryHire.lorryReceipt.fromStation',
+                'lorryHire.lorryReceipt.toStation',
+                'lorryHire.vehicle',
+                'lorryHire.transporter',
+            ])
             ->orderByDesc('created_at');
 
         if (filled($status)) {

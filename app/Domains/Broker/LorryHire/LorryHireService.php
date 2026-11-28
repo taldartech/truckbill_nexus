@@ -203,25 +203,13 @@ final class LorryHireService
 
         $tdsPercent = number_format((float) $tdsResult->applicableRate, 3, '.', '');
         $tdsAmount = $this->calculations->tdsAmountFromFreight($freightTotal, $tdsPercent);
+        // Legacy freight booking create: Custom Amount rows are edit-only.
         /** @var list<array<string, mixed>> $customRows */
-        $customRows = array_values(array_filter(
-            $payload['custom_amounts'] ?? [],
-            'is_array',
-        ));
-        $customPreviewTotal = '0.00';
-        foreach ($customRows as $row) {
-            if (is_numeric($row['amount'] ?? null)) {
-                $customPreviewTotal = bcadd(
-                    $customPreviewTotal,
-                    number_format((float) $row['amount'], 2, '.', ''),
-                    2,
-                );
-            }
-        }
+        $customRows = [];
         $outstanding = $this->calculations->netPayable(
             $freightTotal,
             $tdsAmount,
-            $customPreviewTotal,
+            '0.00',
             collect(),
         );
 

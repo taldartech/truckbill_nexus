@@ -13,14 +13,18 @@ import { Label } from '@/components/ui/label';
 type VoucherRow = {
     id: string;
     voucher_number: string;
+    voucher_date: string | null;
     status: string;
     payment_mode: string | null;
     payment_type: string;
     amount: string | null;
     hire_number: string | null;
     lr_number: string | null;
+    billing_customer_name: string | null;
     transporter_name: string | null;
     vehicle_registration: string | null;
+    source: string | null;
+    destination: string | null;
     created_at: string | null;
     urls: { show: string };
 };
@@ -163,15 +167,20 @@ export default function VouchersIndex({
                         </Button>
                     </AppIndexFilters>
 
-                    <div className="overflow-x-auto">
+                    <div
+                        className="overflow-x-auto"
+                        data-testid="voucher-payments-register"
+                    >
                         <table className="app-index-table min-w-full">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
                                     <th>Voucher #</th>
-                                    <th>LR / Hire</th>
+                                    <th>Good Receipt (Bilty) No</th>
+                                    <th>Customer</th>
+                                    <th>Truck No</th>
                                     <th>Transporter</th>
-                                    <th>Truck</th>
+                                    <th>Source</th>
+                                    <th>Destination</th>
                                     <th>Type</th>
                                     <th>Mode</th>
                                     <th className="text-end">Amount</th>
@@ -182,7 +191,7 @@ export default function VouchersIndex({
                             <tbody>
                                 {vouchers.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={10}>
+                                        <td colSpan={12}>
                                             <p className="app-index-empty">
                                                 No vouchers yet.
                                             </p>
@@ -191,25 +200,23 @@ export default function VouchersIndex({
                                 ) : (
                                     vouchers.data.map((row) => (
                                         <tr key={row.id}>
-                                            <td>{row.created_at ?? '—'}</td>
                                             <td className="font-medium">
                                                 {row.voucher_number}
                                             </td>
+                                            <td>{row.lr_number ?? '—'}</td>
                                             <td>
-                                                {row.lr_number
-                                                    ? `LR ${row.lr_number}`
-                                                    : '—'}
-                                                {row.hire_number
-                                                    ? ` · ${row.hire_number}`
-                                                    : ''}
-                                            </td>
-                                            <td>
-                                                {row.transporter_name ?? '—'}
+                                                {row.billing_customer_name ??
+                                                    '—'}
                                             </td>
                                             <td>
                                                 {row.vehicle_registration ??
                                                     '—'}
                                             </td>
+                                            <td>
+                                                {row.transporter_name ?? '—'}
+                                            </td>
+                                            <td>{row.source ?? '—'}</td>
+                                            <td>{row.destination ?? '—'}</td>
                                             <td>{row.payment_type}</td>
                                             <td>{row.payment_mode ?? '—'}</td>
                                             <td className="text-end tabular-nums">

@@ -135,21 +135,20 @@ test('positive custom amount increases net payable without changing freight or T
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
     $lr = editHireLr($ctx);
-    $hire = app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
-        'hire_date' => now()->toDateString(),
-        'goods_lines' => [[
-            'lr_goods_row_id' => $lr->goodsRows()->firstOrFail()->id,
-            'rate_type' => FreightRateType::PerChargedWeight->value,
-            'rate' => '1000',
-        ]],
+    $hire = editHireCreate($ctx, $lr);
+
+    expect($hire->customAmounts)->toHaveCount(0);
+
+    app(LorryHireRevisionService::class)->revise($hire, $ctx['member'], editHirePayload($hire, [], [
         'custom_amounts' => [[
             'description' => 'Loading surcharge',
             'amount' => '500',
         ]],
-    ]);
+    ]));
+    $hire = $hire->fresh(['goodsLines', 'customAmounts', 'tdsSnapshot', 'adjustments', 'vouchers', 'bookBalanceEntries']);
 
     $line = $hire->goodsLines->firstOrFail();
-    $summary = app(LorryHireCalculationService::class)->summarize($hire->fresh(['customAmounts', 'adjustments', 'vouchers', 'bookBalanceEntries']));
+    $summary = app(LorryHireCalculationService::class)->summarize($hire);
 
     expect($hire->freight_total)->toBe('10000.00')
         ->and($hire->tds_amount)->toBe('200.00')
@@ -159,23 +158,43 @@ test('positive custom amount increases net payable without changing freight or T
         ->and($hire->tdsSnapshot?->freight_basis)->toBe('10000.00');
 });
 
-test('signed custom amount rows cannot be zero', function () {
+test('create ignores custom amount payload (legacy edit-only)', function () {
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
     $lr = editHireLr($ctx);
 
-    expect(fn () => app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
+    $hire = app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
         'hire_date' => now()->toDateString(),
         'goods_lines' => [[
             'lr_goods_row_id' => $lr->goodsRows()->firstOrFail()->id,
-            'rate_type' => FreightRateType::FixedAmount->value,
-            'rate' => '9000',
+            'rate_type' => FreightRateType::PerChargedWeight->value,
+            'rate' => '1000',
         ]],
         'custom_amounts' => [[
-            'description' => 'Invalid',
-            'amount' => '0',
+            'description' => 'Ignored on create',
+            'amount' => '500',
         ]],
-    ]))->toThrow(ValidationException::class);
+    ]);
+
+    expect($hire->customAmounts)->toHaveCount(0)
+        ->and($hire->outstanding_amount)->toBe('9800.00');
+});
+
+test('signed custom amount rows cannot be zero', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = editHireCreate($ctx, editHireLr($ctx));
+
+    expect(fn () => app(LorryHireRevisionService::class)->revise(
+        $hire,
+        $ctx['member'],
+        editHirePayload($hire, [], [
+            'custom_amounts' => [[
+                'description' => 'Invalid',
+                'amount' => '0',
+            ]],
+        ]),
+    ))->toThrow(ValidationException::class);
 });
 
 test('editing rate and custom amount recalculates freight, tds and payable with a revision and audit', function () {

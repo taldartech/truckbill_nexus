@@ -10,6 +10,7 @@ use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
+use App\Domains\Broker\Presentation\TransporterVoucherRegisterPresenter;
 use App\Domains\Broker\Voucher\TransporterBookBalanceService;
 use App\Domains\Broker\Voucher\TransporterVoucherService;
 use App\Domains\Broker\Voucher\VoucherPaymentService;
@@ -49,6 +50,7 @@ class TransporterVoucherController extends Controller
         private readonly TransporterBookBalanceService $bookBalances,
         private readonly FreightAmountPresentation $freightPresentation,
         private readonly VoucherPayoutExportService $payoutExport,
+        private readonly TransporterVoucherRegisterPresenter $registerRows,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -75,7 +77,9 @@ class TransporterVoucherController extends Controller
             'statusOptions' => $this->statusOptions(),
             'paymentModeOptions' => $this->paymentModeOptions(),
             'vouchers' => [
-                'data' => collect($page->items())->map(fn (TransporterVoucher $row): array => $this->listPayload($row, $maySeeFreight))->values()->all(),
+                'data' => collect($page->items())->map(
+                    fn (TransporterVoucher $row): array => $this->registerRows->row($row, $maySeeFreight),
+                )->values()->all(),
                 'meta' => [
                     'current_page' => $page->currentPage(),
                     'last_page' => $page->lastPage(),
@@ -297,31 +301,6 @@ class TransporterVoucherController extends Controller
             VoucherStatus::InProgress => VoucherStatus::Paid->value,
             VoucherStatus::Paid => null,
         };
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function listPayload(TransporterVoucher $voucher, bool $maySeeFreight): array
-    {
-        $hire = $voucher->lorryHire;
-
-        return [
-            'id' => $voucher->id,
-            'voucher_number' => $voucher->voucher_number,
-            'status' => $voucher->status->value,
-            'payment_mode' => $voucher->payment_mode?->value,
-            'payment_type' => $voucher->payment_type->value,
-            'amount' => $this->freightPresentation->presentAmount($voucher->amount, $maySeeFreight),
-            'hire_number' => $hire?->hire_number,
-            'lr_number' => $hire?->lorryReceipt?->lr_number,
-            'transporter_name' => $hire?->transporter?->name,
-            'vehicle_registration' => $hire?->vehicle?->registration_number,
-            'created_at' => $voucher->created_at?->format('d-m-Y H:i'),
-            'urls' => [
-                'show' => route('branch.broker.vouchers.show', [$voucher], absolute: false),
-            ],
-        ];
     }
 
     /**

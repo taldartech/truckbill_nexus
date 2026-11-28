@@ -12,9 +12,9 @@ use App\Domains\Broker\LorryHire\LorryHireCalculationService;
 use App\Domains\Broker\LorryHire\LorryHireCancellationService;
 use App\Domains\Broker\LorryHire\LorryHireRevisionService;
 use App\Domains\Broker\LorryHire\LorryHireService;
+use App\Domains\Broker\Presentation\LorryHireRegisterPresenter;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Consignment\Enums\FreightRateType;
-use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Consignment\Support\FreightRateTypeCatalog;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -52,6 +52,7 @@ class LorryHireController extends Controller
         private readonly LorryHireCalculationService $calculations,
         private readonly BrokerAdjustmentService $adjustments,
         private readonly FreightAmountPresentation $freightPresentation,
+        private readonly LorryHireRegisterPresenter $registerRows,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -117,7 +118,13 @@ class LorryHireController extends Controller
             ])->values()->all(),
             'lorryHires' => [
                 'data' => collect($page->items())->map(
-                    fn (LorryHire $hire): array => $this->listPayload($hire, $maySeeFreight, $canCreateVoucher, $canAssignMemo, $canEditHires),
+                    fn (LorryHire $hire): array => $this->registerRows->row(
+                        $hire,
+                        $maySeeFreight,
+                        $canCreateVoucher,
+                        $canAssignMemo,
+                        $canEditHires,
+                    ),
                 )->values()->all(),
                 'meta' => [
                     'current_page' => $page->currentPage(),
@@ -628,91 +635,6 @@ class LorryHireController extends Controller
             $company,
             $branch,
         );
-    }
-
-    /**
-     * @return array{
-     *     id: string,
-     *     hire_number: string,
-     *     status: string,
-     *     hire_date: string|null,
-     *     lr_date: string|null,
-     *     lr_number: string|null,
-     *     billing_customer_name: string|null,
-     *     vehicle_registration: string|null,
-     *     transporter_name: string|null,
-     *     from_station_name: string|null,
-     *     to_station_name: string|null,
-     *     weight_mt: string|null,
-     *     rate: string|null,
-     *     freight_total: string|null,
-     *     outstanding_amount: string|null,
-     *     created_at: string|null,
-     *     payable: bool,
-     *     memo_number: string|null,
-     *     memo_pending: bool,
-     *     urls: array{show: string, edit: string|null}
-     * }
-     */
-    private function listPayload(
-        LorryHire $hire,
-        bool $maySeeFreight,
-        bool $canCreateVoucher = false,
-        bool $canAssignMemo = false,
-        bool $canEdit = false,
-    ): array {
-        $weightKg = $hire->goodsLines->sum(fn ($line): float => (float) ($line->loading_weight ?? 0));
-        $primaryLine = $hire->goodsLines->first();
-        $outstanding = number_format((float) ($hire->outstanding_amount ?? 0), 2, '.', '');
-        $payable = $canCreateVoucher
-            && $hire->status !== LorryHireStatus::Cancelled
-            && bccomp($outstanding, '0.00', 2) === 1;
-        $receipt = $hire->lorryReceipt;
-        $memoNumber = $receipt?->delivery?->memo_number;
-        $memoPending = $canAssignMemo
-            && $hire->status !== LorryHireStatus::Cancelled
-            && $receipt?->status === LrStatus::InProgress
-            && $memoNumber === null;
-
-        return [
-            'id' => $hire->id,
-            'hire_number' => $hire->hire_number,
-            'status' => $hire->status->value,
-            'hire_date' => $hire->hire_date?->format('d-m-Y'),
-            'lr_date' => $hire->lorryReceipt?->lr_date?->format('d-m-Y'),
-            'lr_number' => $hire->lorryReceipt?->lr_number,
-            'billing_customer_name' => $hire->lorryReceipt?->billingCustomer?->name,
-            'vehicle_registration' => $hire->vehicle?->registration_number,
-            'transporter_name' => $hire->transporter?->name,
-            'transporter_party_id' => $hire->transporter_party_id,
-            'vehicle_id' => $hire->vehicle_id,
-            'from_station_name' => $hire->lorryReceipt !== null
-                ? $this->loadingStationLabel($hire->lorryReceipt)
-                : null,
-            'to_station_name' => $hire->lorryReceipt !== null
-                ? $this->unloadingStationLabel($hire->lorryReceipt)
-                : null,
-            'weight_mt' => $weightKg > 0
-                ? number_format($weightKg / 1000, 3, '.', '')
-                : null,
-            'rate' => $primaryLine !== null
-                ? $this->freightPresentation->presentAmount($primaryLine->rate, $maySeeFreight)
-                : null,
-            'freight_total' => $this->freightPresentation->presentAmount($hire->freight_total, $maySeeFreight),
-            'outstanding_amount' => $this->freightPresentation->presentAmount($hire->outstanding_amount, $maySeeFreight),
-            'created_at' => $hire->created_at?->format('d-m-Y'),
-            'payable' => $payable,
-            'lorry_receipt_id' => $hire->lorry_receipt_id,
-            'billing_customer_party_id' => $receipt?->billing_customer_party_id,
-            'memo_number' => $memoNumber,
-            'memo_pending' => $memoPending,
-            'urls' => [
-                'show' => route('branch.broker.lorry-hires.show', [$hire], absolute: false),
-                'edit' => $canEdit && $hire->status !== LorryHireStatus::Cancelled
-                    ? route('branch.broker.lorry-hires.edit', [$hire], absolute: false)
-                    : null,
-            ],
-        ];
     }
 
     private function grossFreightMargin(?string $customerFreight, ?string $transporterFreight): ?string

@@ -17,9 +17,13 @@ type VoucherRow = {
     voucher_number: string;
     status: string;
     payment_mode: string | null;
+    payment_type: string;
     amount: string | null;
-    hire_number: string | null;
+    lr_number: string | null;
     transporter_name: string | null;
+    source: string | null;
+    destination: string | null;
+    created_at: string | null;
     next_status: string | null;
     urls: { show: string };
 };
@@ -123,7 +127,10 @@ export default function DailyPaymentsIndex({
                         </div>
                     ) : null}
 
-                    <div className="overflow-x-auto">
+                    <div
+                        className="overflow-x-auto"
+                        data-testid="daily-transporter-payments"
+                    >
                         <table className="app-index-table min-w-full">
                             <thead>
                                 <tr>
@@ -131,11 +138,15 @@ export default function DailyPaymentsIndex({
                                         <th className="text-center"> </th>
                                     ) : null}
                                     <th>Voucher #</th>
-                                    <th>Hire</th>
+                                    <th>LR No</th>
                                     <th>Transporter</th>
+                                    <th>Source</th>
+                                    <th>Destination</th>
+                                    <th>Payment Type</th>
+                                    <th>Payment Mode</th>
                                     <th className="text-end">Amount</th>
-                                    <th>Mode</th>
                                     <th>Status</th>
+                                    <th>Created Time</th>
                                     <th className="text-center">Actions</th>
                                 </tr>
                             </thead>
@@ -144,7 +155,7 @@ export default function DailyPaymentsIndex({
                                     <tr>
                                         <td
                                             colSpan={
-                                                permissions.can_status ? 8 : 7
+                                                permissions.can_status ? 12 : 11
                                             }
                                         >
                                             <p className="app-index-empty">
@@ -171,19 +182,23 @@ export default function DailyPaymentsIndex({
                                             <td className="font-medium">
                                                 {row.voucher_number}
                                             </td>
-                                            <td>{row.hire_number ?? '—'}</td>
+                                            <td>{row.lr_number ?? '—'}</td>
                                             <td>
                                                 {row.transporter_name ?? '—'}
                                             </td>
+                                            <td>{row.source ?? '—'}</td>
+                                            <td>{row.destination ?? '—'}</td>
+                                            <td>{row.payment_type ?? '—'}</td>
+                                            <td>{row.payment_mode ?? '—'}</td>
                                             <td className="text-end tabular-nums">
                                                 {row.amount ?? '—'}
                                             </td>
-                                            <td>{row.payment_mode ?? '—'}</td>
                                             <td>
                                                 <WorkspaceStatusBadge
                                                     status={row.status}
                                                 />
                                             </td>
+                                            <td>{row.created_at ?? '—'}</td>
                                             <td>
                                                 <div className="flex justify-center">
                                                     <AppIconAction

@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { loginAndEnterBrokerBranch } from '../fixtures/broker-workflow';
+import {
+    loginAndEnterBrokerBranch,
+    openGoodHiresRegister,
+} from '../fixtures/broker-workflow';
 
 test.describe('Lorry Hire Custom Amounts (legacy)', () => {
     test.beforeEach(async ({ page }) => {
@@ -9,9 +12,7 @@ test.describe('Lorry Hire Custom Amounts (legacy)', () => {
     test('edit adds signed custom amount rows without overriding freight', async ({
         page,
     }) => {
-        await page
-            .getByRole('link', { name: /Good Hires|Lorry Hires/i })
-            .click();
+        await openGoodHiresRegister(page);
         await page.getByRole('link', { name: /Edit/i }).first().click();
 
         await expect(page.locator('#lorry-hire-form')).toBeVisible();

@@ -6,6 +6,7 @@ use App\Domains\Broker\Enums\VoucherStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
+use App\Domains\Broker\Presentation\TransporterVoucherRegisterPresenter;
 use App\Domains\Broker\Voucher\TransporterVoucherService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -34,6 +35,7 @@ class BrokerDailyPaymentsController extends Controller
         private readonly PermissionAuthorizer $authorizer,
         private readonly TransporterVoucherService $vouchers,
         private readonly FreightAmountPresentation $freightPresentation,
+        private readonly TransporterVoucherRegisterPresenter $registerRows,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -106,23 +108,13 @@ class BrokerDailyPaymentsController extends Controller
      */
     private function dailyPaymentVoucherRow(TransporterVoucher $row, bool $maySeeFreight): array
     {
-        return [
-            'id' => $row->id,
-            'voucher_number' => $row->voucher_number,
-            'status' => $row->status->value,
-            'payment_mode' => $row->payment_mode?->value,
-            'amount' => $this->freightPresentation->presentAmount($row->amount, $maySeeFreight),
-            'hire_number' => $row->lorryHire?->hire_number,
-            'transporter_name' => $row->lorryHire?->transporter?->name,
+        return array_merge($this->registerRows->row($row, $maySeeFreight), [
             'next_status' => match ($row->status) {
                 VoucherStatus::Pending => VoucherStatus::InProgress->value,
                 VoucherStatus::InProgress => VoucherStatus::Paid->value,
                 VoucherStatus::Paid => null,
             },
-            'urls' => [
-                'show' => route('branch.broker.vouchers.show', [$row], absolute: false),
-            ],
-        ];
+        ]);
     }
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void

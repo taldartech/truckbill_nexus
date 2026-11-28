@@ -110,6 +110,14 @@ export async function loginAndEnterBrokerBranch(page: Page): Promise<void> {
     await enterDemoAlphaBranch(page);
 }
 
+/** Good Hires register — direct route avoids duplicate sidebar link strict-mode hits. */
+export async function openGoodHiresRegister(page: Page): Promise<void> {
+    await page.goto('/broker/lorry-hires');
+    await expect(page.getByTestId('good-hires-register')).toBeVisible({
+        timeout: 20_000,
+    });
+}
+
 /**
  * Creates a pending Broker LR (market vehicle, text route, parties, fixed freight).
  */

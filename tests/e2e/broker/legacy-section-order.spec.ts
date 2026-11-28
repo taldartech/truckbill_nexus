@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { loginAndEnterBrokerBranch } from '../fixtures/broker-workflow';
+import {
+    loginAndEnterBrokerBranch,
+    openGoodHiresRegister,
+} from '../fixtures/broker-workflow';
 
 /**
  * Nexus-only legacy section order certification (legacy broker app not run in CI/local).
@@ -13,9 +16,7 @@ test.describe('Broker legacy section order (Nexus)', () => {
     test('lorry hire edit exposes legacy section order and custom amounts table', async ({
         page,
     }) => {
-        await page
-            .getByRole('link', { name: /Good Hires|Lorry Hires/i })
-            .click();
+        await openGoodHiresRegister(page);
         await page.getByRole('link', { name: /Edit/i }).first().click();
 
         const linked = page.getByTestId('lorry-hire-section-linked-bilty');
@@ -61,10 +62,7 @@ test.describe('Broker legacy section order (Nexus)', () => {
     test('good hires register opens voucher modal in legacy panel order', async ({
         page,
     }) => {
-        await page
-            .getByRole('link', { name: /Good Hires|Lorry Hires/i })
-            .click();
-        await expect(page.getByTestId('good-hires-register')).toBeVisible();
+        await openGoodHiresRegister(page);
 
         const checkbox = page
             .getByRole('checkbox', { name: /^Select hire / })
