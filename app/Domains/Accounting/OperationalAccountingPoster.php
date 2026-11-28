@@ -327,6 +327,78 @@ final class OperationalAccountingPoster
         );
     }
 
+    public function postLorryHireCustomAmountsRecognized(string $customTotal, LorryHire $hire, User $actor): void
+    {
+        $this->postLorryHireCustomAmountDelta($customTotal, $hire, $actor, 'hire_custom_amounts_recognized');
+    }
+
+    public function postLorryHireCustomAmountsRevised(
+        string $beforeTotal,
+        string $afterTotal,
+        LorryHire $hire,
+        User $actor,
+    ): void {
+        $delta = bcsub($this->money($afterTotal), $this->money($beforeTotal), 2);
+        if (bccomp($delta, '0', 2) === 0) {
+            return;
+        }
+
+        $this->postLorryHireCustomAmountDelta($delta, $hire, $actor, 'hire_custom_amounts_revised');
+    }
+
+    private function postLorryHireCustomAmountDelta(
+        string $signedDelta,
+        LorryHire $hire,
+        User $actor,
+        string $purpose,
+    ): void {
+        $company = Company::query()->findOrFail($hire->company_id);
+        $allowControlled = $this->hasPostedLink($company, LorryHire::class, $hire->id, 'hire_recognized');
+        if (! $this->shouldAutoPost($company) && ! $allowControlled) {
+            return;
+        }
+
+        $signed = $this->money($signedDelta);
+        if (bccomp($signed, '0', 2) === 0) {
+            return;
+        }
+
+        $branch = Branch::query()->findOrFail($hire->branch_id);
+        $this->prepare($company);
+
+        $expense = $this->ledgers->requireByName($company, 'Transporter Freight Expense');
+        $payable = $this->ledgers->requireByName($company, 'Transporter Payables');
+        $zero = $this->zeroAmount();
+        $abs = number_format(abs((float) $signed), 2, '.', '');
+
+        $lines = bccomp($signed, '0', 2) > 0
+            ? [
+                ['gl_ledger_id' => $expense->id, 'debit_amount' => $abs, 'credit_amount' => $zero, 'narration' => 'Custom Amount additional payable'],
+                ['gl_ledger_id' => $payable->id, 'debit_amount' => $zero, 'credit_amount' => $abs, 'narration' => 'Custom Amount payable'],
+            ]
+            : [
+                ['gl_ledger_id' => $payable->id, 'debit_amount' => $abs, 'credit_amount' => $zero, 'narration' => 'Custom Amount recovery'],
+                ['gl_ledger_id' => $expense->id, 'debit_amount' => $zero, 'credit_amount' => $abs, 'narration' => 'Custom Amount recovery'],
+            ];
+
+        $this->posting->postManual(
+            company: $company,
+            actor: $actor,
+            header: [
+                'voucher_type' => AccountingVoucherType::Journal,
+                'voucher_date' => $hire->hire_date?->toDateString() ?? now()->toDateString(),
+                'narration' => 'Lorry Hire Custom Amount '.$hire->hire_number,
+                'branch_id' => $branch->id,
+                'source_type' => LorryHire::class,
+                'source_id' => $hire->id,
+                'posting_purpose' => $purpose,
+            ],
+            lines: $lines,
+            branch: $branch,
+            allowControlledCorrection: $allowControlled,
+        );
+    }
+
     public function postBrokerAdjustment(
         BrokerAdjustment $adjustment,
         LorryHire $hire,

@@ -37,8 +37,6 @@ type GoodsLine = {
     rate_type_label?: string | null;
     rate: string | null;
     freight_amount: string | null;
-    calculated_freight_amount?: string | null;
-    custom_amount?: string | null;
     loading_weight: string | null;
     is_fixed_amount: boolean;
 };
@@ -95,6 +93,12 @@ type Props = {
         remaining_payable?: string | null;
         reserved_voucher_amount?: string | null;
         goods_lines: GoodsLine[];
+        custom_amounts: Array<{
+            id: string;
+            description: string;
+            amount: string | null;
+        }>;
+        custom_amounts_total?: string | null;
         tds_snapshot: {
             applicable_rate: string;
             rule_code: string | null;
@@ -543,13 +547,7 @@ export default function LorryHireShow({
                                                     Weight
                                                 </th>
                                                 <th className="px-2 py-2">
-                                                    Calculated Freight
-                                                </th>
-                                                <th className="px-2 py-2">
-                                                    Custom Amount
-                                                </th>
-                                                <th className="px-2 py-2">
-                                                    Effective Freight
+                                                    Transporter Freight
                                                 </th>
                                             </tr>
                                         </thead>
@@ -578,20 +576,6 @@ export default function LorryHireShow({
                                                                 ? `${(Number(line.loading_weight) / 1000).toFixed(3)} MT`
                                                                 : '—'}
                                                         </td>
-                                                        <td
-                                                            className={cn(
-                                                                'px-2 py-2 tabular-nums',
-                                                                line.custom_amount &&
-                                                                    'text-slate-400 line-through',
-                                                            )}
-                                                        >
-                                                            {line.calculated_freight_amount ??
-                                                                '—'}
-                                                        </td>
-                                                        <td className="px-2 py-2 tabular-nums">
-                                                            {line.custom_amount ??
-                                                                'Off'}
-                                                        </td>
                                                         <td className="px-2 py-2 font-medium tabular-nums">
                                                             {line.freight_amount ??
                                                                 '—'}
@@ -602,6 +586,51 @@ export default function LorryHireShow({
                                         </tbody>
                                     </table>
                                 </div>
+                                {lorryHire.custom_amounts.length > 0 ? (
+                                    <div className="border-t border-slate-100 px-4 py-3">
+                                        <p className="mb-2 text-xs font-medium text-slate-600">
+                                            Custom Amounts
+                                        </p>
+                                        <table className="min-w-full text-sm">
+                                            <thead>
+                                                <tr className="text-left text-xs text-slate-500">
+                                                    <th className="px-2 py-1">
+                                                        Particulars
+                                                    </th>
+                                                    <th className="px-2 py-1">
+                                                        Amount (+/−)
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {lorryHire.custom_amounts.map(
+                                                    (row) => (
+                                                        <tr
+                                                            key={row.id}
+                                                            className="border-t border-slate-100"
+                                                        >
+                                                            <td className="px-2 py-1">
+                                                                {
+                                                                    row.description
+                                                                }
+                                                            </td>
+                                                            <td className="px-2 py-1 tabular-nums">
+                                                                {row.amount ??
+                                                                    '—'}
+                                                            </td>
+                                                        </tr>
+                                                    ),
+                                                )}
+                                            </tbody>
+                                        </table>
+                                        {lorryHire.custom_amounts_total ? (
+                                            <p className="mt-2 text-xs text-slate-600">
+                                                Custom Amounts total:{' '}
+                                                {lorryHire.custom_amounts_total}
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                ) : null}
                                 {lorryHire.tds_snapshot ? (
                                     <div className="border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
                                         TDS{' '}

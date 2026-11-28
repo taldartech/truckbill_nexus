@@ -58,6 +58,7 @@ final class LorryHireService
         private readonly LorryHireCalculationService $calculations = new LorryHireCalculationService,
         private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
         private readonly LorryHireGoodsLineBuilder $goodsLines = new LorryHireGoodsLineBuilder,
+        private readonly LorryHireCustomAmountService $customAmounts = new LorryHireCustomAmountService,
     ) {}
 
     /**
@@ -124,6 +125,7 @@ final class LorryHireService
                 'tdsSnapshot',
                 'vouchers',
                 'adjustments',
+                'customAmounts',
             ])
             ->first();
 
@@ -154,8 +156,8 @@ final class LorryHireService
      *         lr_goods_row_id: string,
      *         rate_type?: string,
      *         rate: string|float|int,
-     *         custom_amount?: string|float|int|null
-     *     }>
+     *     }>,
+     *     custom_amounts?: list<array{id?: string|null, description?: string, amount?: string|float|int}>
      * }  $payload
      *
      * Payee and loading weight are never read from the payload: the Payee is the Bilty's
@@ -201,7 +203,27 @@ final class LorryHireService
 
         $tdsPercent = number_format((float) $tdsResult->applicableRate, 3, '.', '');
         $tdsAmount = $this->calculations->tdsAmountFromFreight($freightTotal, $tdsPercent);
-        $outstanding = bcsub($freightTotal, $tdsAmount, 2);
+        /** @var list<array<string, mixed>> $customRows */
+        $customRows = array_values(array_filter(
+            $payload['custom_amounts'] ?? [],
+            'is_array',
+        ));
+        $customPreviewTotal = '0.00';
+        foreach ($customRows as $row) {
+            if (is_numeric($row['amount'] ?? null)) {
+                $customPreviewTotal = bcadd(
+                    $customPreviewTotal,
+                    number_format((float) $row['amount'], 2, '.', ''),
+                    2,
+                );
+            }
+        }
+        $outstanding = $this->calculations->netPayable(
+            $freightTotal,
+            $tdsAmount,
+            $customPreviewTotal,
+            collect(),
+        );
 
         $hireDate = filled($payload['hire_date'] ?? null)
             ? CarbonImmutable::parse((string) $payload['hire_date'])->startOfDay()
@@ -223,6 +245,7 @@ final class LorryHireService
                 $tdsResult,
                 $hireDate,
                 $payload,
+                $customRows,
             ): LorryHire {
                 return $this->withTenant($company, $branch, function () use (
                     $lorryReceipt,
@@ -239,6 +262,7 @@ final class LorryHireService
                     $tdsResult,
                     $hireDate,
                     $payload,
+                    $customRows,
                 ): LorryHire {
                     $existing = LorryHire::query()
                         ->where('company_id', $company->id)
@@ -289,9 +313,17 @@ final class LorryHireService
                             'rate' => $line['rate'],
                             'is_fixed_amount' => $line['is_fixed_amount'],
                             'freight_amount' => $line['freight_amount'],
-                            'custom_amount' => $line['custom_amount'],
                             'loading_weight' => $line['loading_weight'],
                         ]);
+                    }
+
+                    if ($customRows !== []) {
+                        $customTotal = $this->customAmounts->sync($hire, $customRows);
+                        $summary = $this->calculations->summarize($hire->fresh(['customAmounts', 'adjustments', 'vouchers', 'bookBalanceEntries']));
+                        $hire->forceFill([
+                            'outstanding_amount' => $summary['outstanding_amount'],
+                        ])->save();
+                        $this->accounting->postLorryHireCustomAmountsRecognized($customTotal, $hire, $actor);
                     }
 
                     LorryHireTdsSnapshot::query()->create([

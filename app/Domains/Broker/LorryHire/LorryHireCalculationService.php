@@ -10,6 +10,7 @@ use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Freight\FreightCalculator;
 use App\Models\BrokerAdjustment;
 use App\Models\LorryHire;
+use App\Models\LorryHireCustomAmount;
 use App\Models\LorryHireGoodsLine;
 use App\Models\TransporterBookBalanceEntry;
 use App\Models\TransporterVoucher;
@@ -119,24 +120,35 @@ final class LorryHireCalculationService
     }
 
     /**
-     * Rate Type × Rate × loading quantity for a persisted line, ignoring any Custom Amount.
+     * Rate Type × Rate × loading quantity for a persisted line.
      *
      * @return numeric-string
      */
     public function calculatedLineFreight(LorryHireGoodsLine $line): string
     {
-        if ($line->custom_amount === null) {
-            return $this->money($line->freight_amount);
-        }
-
         return $this->goodsLineFreight([
             'rate_type' => $line->rate_type,
             'rate' => $line->rate,
+            'is_fixed_amount' => $line->is_fixed_amount,
             'actual_weight' => $line->loading_weight,
             'charged_weight' => $line->loading_weight,
             'package_count' => $line->lrGoodsRow?->package_count,
             'rate_semantics' => $line->rate_semantics ?? FreightRateSemantics::WeightKg,
         ]);
+    }
+
+    /**
+     * @param  Collection<int, LorryHireCustomAmount>  $customAmounts
+     * @return numeric-string
+     */
+    public function customAmountsTotal(Collection $customAmounts): string
+    {
+        $total = '0.00';
+        foreach ($customAmounts as $row) {
+            $total = bcadd($total, $this->money($row->amount), 2);
+        }
+
+        return $total;
     }
 
     /**
@@ -205,16 +217,21 @@ final class LorryHireCalculationService
     }
 
     /**
-     * Net Payable = freight + positive adjustments − negative adjustments − TDS.
+     * Net Payable = freight + custom amounts + positive adjustments − negative adjustments − TDS.
      * May be negative when book-balance semantics require it (Rules §11).
      *
      * @param  numeric-string  $freightTotal
      * @param  numeric-string  $tdsAmount
+     * @param  numeric-string  $customAmountsTotal  Signed Custom Amount rows total.
      * @param  Collection<int, BrokerAdjustment>  $adjustments
      * @return numeric-string
      */
-    public function netPayable(string $freightTotal, string $tdsAmount, Collection $adjustments): string
-    {
+    public function netPayable(
+        string $freightTotal,
+        string $tdsAmount,
+        string $customAmountsTotal,
+        Collection $adjustments,
+    ): string {
         $positive = '0.00';
         $negative = '0.00';
 
@@ -232,6 +249,7 @@ final class LorryHireCalculationService
         }
 
         $subtotal = bcadd($this->money($freightTotal), $positive, 2);
+        $subtotal = bcadd($subtotal, $this->money($customAmountsTotal), 2);
 
         return bcsub(bcsub($subtotal, $negative, 2), $this->money($tdsAmount), 2);
     }
@@ -282,11 +300,12 @@ final class LorryHireCalculationService
      */
     public function summarize(LorryHire $hire): array
     {
-        $hire->loadMissing(['adjustments', 'vouchers', 'bookBalanceEntries']);
+        $hire->loadMissing(['adjustments', 'vouchers', 'bookBalanceEntries', 'customAmounts']);
 
         $freight = $this->money($hire->freight_total);
         $tds = $this->money($hire->tds_amount);
-        $net = $this->netPayable($freight, $tds, $hire->adjustments);
+        $customTotal = $this->customAmountsTotal($hire->customAmounts);
+        $net = $this->netPayable($freight, $tds, $customTotal, $hire->adjustments);
         $outstanding = $this->outstandingAmount($net, $hire->vouchers, $hire->bookBalanceEntries);
         $reserved = $this->reservedVoucherAmount($hire->vouchers);
         $remainingPayable = bcsub($outstanding, $reserved, 2);

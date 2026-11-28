@@ -15,7 +15,6 @@ use Illuminate\Support\Str;
  * @property string $rate
  * @property bool $is_fixed_amount
  * @property string $freight_amount
- * @property string|null $custom_amount
  * @property string $loading_weight
  * @property-read LrGoodsRow|null $lrGoodsRow
  */
@@ -29,7 +28,7 @@ class LorryHireGoodsLine extends Model
 
     protected $fillable = [
         'id', 'company_id', 'lorry_hire_id', 'lr_goods_row_id',
-        'rate_type', 'rate_semantics', 'rate', 'is_fixed_amount', 'freight_amount', 'custom_amount', 'loading_weight',
+        'rate_type', 'rate_semantics', 'rate', 'is_fixed_amount', 'freight_amount', 'loading_weight',
     ];
 
     protected function casts(): array
@@ -40,7 +39,6 @@ class LorryHireGoodsLine extends Model
             'rate' => 'decimal:4',
             'is_fixed_amount' => 'boolean',
             'freight_amount' => 'decimal:2',
-            'custom_amount' => 'decimal:2',
             'loading_weight' => 'decimal:3',
         ];
     }

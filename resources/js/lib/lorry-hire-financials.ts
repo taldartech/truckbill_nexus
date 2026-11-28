@@ -11,6 +11,7 @@ export type HireRateBasis = {
 
 export type HireFinancials = {
     transporterFreight: number;
+    customAmountsTotal: number;
     tdsAmount: number | null;
     netPayable: number;
 };
@@ -70,28 +71,24 @@ export function lineTransporterFreight(
     }
 }
 
-/** Effective line freight: the Custom Amount when entered, otherwise the calculated freight. */
-export function effectiveLineFreight(
-    calculatedFreight: number | null,
-    customEnabled: boolean,
-    customInput: string,
-): number | null {
-    if (!customEnabled) {
-        return calculatedFreight;
-    }
-    const custom = parseNumeric(customInput);
-
-    return custom !== null && custom > 0 ? roundMoney(custom) : null;
+export function customAmountsTotal(rows: Array<{ amount: string }>): number {
+    return roundMoney(
+        rows.reduce((sum, row) => {
+            const value = parseNumeric(row.amount);
+            return value !== null ? sum + value : sum;
+        }, 0),
+    );
 }
 
 /**
- * Single place for the Transporter Freight → TDS → Net Payable arithmetic.
+ * Single place for Transporter Freight → Custom Amounts → TDS → Net Payable.
  * `lockedTdsAmount` keeps an existing TDS once the submission lock applies (edit only).
  */
 export function summarizeHireFinancials(
     lineFreights: Array<number | null>,
     tdsPercent: string | null,
     lockedTdsAmount: number | null = null,
+    customAmounts: number = 0,
 ): HireFinancials {
     const transporterFreight = roundMoney(
         lineFreights.reduce<number>((sum, value) => sum + (value ?? 0), 0),
@@ -106,7 +103,10 @@ export function summarizeHireFinancials(
 
     return {
         transporterFreight,
+        customAmountsTotal: customAmounts,
         tdsAmount,
-        netPayable: roundMoney(transporterFreight - (tdsAmount ?? 0)),
+        netPayable: roundMoney(
+            transporterFreight + customAmounts - (tdsAmount ?? 0),
+        ),
     };
 }

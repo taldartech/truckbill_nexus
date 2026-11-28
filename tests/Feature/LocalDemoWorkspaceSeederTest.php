@@ -7,7 +7,7 @@ use App\Models\Enquiry;
 use App\Models\EnquiryExternalReference;
 use App\Models\LinkedBiltyGroup;
 use App\Models\LorryHire;
-use App\Models\LorryHireGoodsLine;
+use App\Models\LorryHireCustomAmount;
 use App\Models\LorryHireRevision;
 use App\Models\Party;
 use App\Models\Role;
@@ -140,7 +140,7 @@ test('local demo seeder creates isolated companies roles masters and enquiries i
         ->toBeGreaterThanOrEqual(1)
         ->and(LinkedBiltyGroup::query()->where('company_id', $companyA->id)->whereNull('deleted_at')->count())
         ->toBeGreaterThanOrEqual(1)
-        ->and(LorryHireGoodsLine::query()->where('company_id', $companyA->id)->where('custom_amount', '11500.00')->exists())
+        ->and(LorryHireCustomAmount::query()->where('company_id', $companyA->id)->where('amount', '1500.00')->exists())
         ->toBeTrue()
         ->and(LorryHireRevision::query()->where('company_id', $companyA->id)->exists())
         ->toBeTrue();

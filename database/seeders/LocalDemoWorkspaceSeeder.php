@@ -2899,7 +2899,10 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     'lr_goods_row_id' => (string) $row->id,
                     'rate_type' => FreightRateType::PerChargedWeight->value,
                     'rate' => '1200',
-                    'custom_amount' => '11000',
+                ]],
+                'custom_amounts' => [[
+                    'description' => 'Transporter surcharge (demo)',
+                    'amount' => '200',
                 ]],
             ]);
         }
@@ -2914,7 +2917,10 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     'lr_goods_row_id' => $line->lr_goods_row_id,
                     'rate_type' => $line->rate_type->value,
                     'rate' => $line->rate,
-                    'custom_amount' => '11500',
+                ]],
+                'custom_amounts' => [[
+                    'description' => 'Transporter surcharge (demo)',
+                    'amount' => '1500',
                 ]],
             ]);
         }

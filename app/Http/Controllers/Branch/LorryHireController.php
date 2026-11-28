@@ -593,17 +593,19 @@ class LorryHireController extends Controller
                     'rate_type_label' => $this->freightRateTypeLabel($line->rate_type),
                     'rate' => $this->freightPresentation->presentAmount($line->rate, $maySeeFreight),
                     'freight_amount' => $this->freightPresentation->presentAmount($line->freight_amount, $maySeeFreight),
-                    'calculated_freight_amount' => $this->freightPresentation->presentAmount(
-                        $this->calculations->calculatedLineFreight($line),
-                        $maySeeFreight,
-                    ),
-                    'custom_amount' => $line->custom_amount !== null
-                        ? $this->freightPresentation->presentAmount($line->custom_amount, $maySeeFreight)
-                        : null,
                     'loading_weight' => $line->loading_weight,
                     'is_fixed_amount' => $line->is_fixed_amount,
                 ];
             })->values()->all(),
+            'custom_amounts' => $hire->customAmounts->map(fn ($row) => [
+                'id' => $row->id,
+                'description' => $row->description,
+                'amount' => $this->freightPresentation->presentAmount($row->amount, $maySeeFreight),
+            ])->values()->all(),
+            'custom_amounts_total' => $this->freightPresentation->presentAmount(
+                $this->calculations->customAmountsTotal($hire->customAmounts),
+                $maySeeFreight,
+            ),
             'tds_snapshot' => $hire->tdsSnapshot ? [
                 'applicable_rate' => number_format((float) $hire->tdsSnapshot->applicable_rate, 3, '.', ''),
                 'rule_code' => $hire->tdsSnapshot->rule_code,

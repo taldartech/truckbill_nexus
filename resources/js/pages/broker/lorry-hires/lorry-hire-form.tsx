@@ -8,13 +8,12 @@ import type {
 } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatDisplayDate } from '@/lib/dates';
 import { freightRateTypeLabel } from '@/lib/freight-rate-type-options';
 import {
-    effectiveLineFreight,
+    customAmountsTotal,
     lineTransporterFreight,
     summarizeHireFinancials,
 } from '@/lib/lorry-hire-financials';
@@ -39,8 +38,12 @@ type LineDraft = {
     lr_goods_row_id: string;
     rate_type: string;
     rate: string;
-    custom_enabled: boolean;
-    custom_amount: string;
+};
+
+type CustomAmountDraft = {
+    id?: string;
+    description: string;
+    amount: string;
 };
 
 type HireFormData = {
@@ -48,20 +51,28 @@ type HireFormData = {
     remarks: string;
     edit_remark: string;
     goods_lines: LineDraft[];
+    custom_amounts: CustomAmountDraft[];
 };
 
 type RevisionLine = {
     lr_goods_row_id: string;
     rate_type: string;
     rate: string;
-    custom_amount: string | null;
     freight_amount: string;
+};
+
+type RevisionCustomAmount = {
+    id: string | null;
+    description: string;
+    amount: string;
 };
 
 type RevisionSide = {
     hire_date: string | null;
     remarks: string | null;
     lines: RevisionLine[];
+    custom_amounts: RevisionCustomAmount[];
+    custom_amounts_total: string;
     freight_total: string;
     tds_amount: string;
     net_payable: string;
@@ -86,10 +97,9 @@ export type EditableHire = {
         lr_goods_row_id: string;
         rate_type: string;
         rate: string;
-        custom_amount: string | null;
-        calculated_freight_amount: string;
         freight_amount: string;
     }>;
+    custom_amounts: CustomAmountDraft[];
     freight_total: string;
     tds_amount: string;
     net_payable: string;
@@ -198,10 +208,18 @@ function initialLines(
             lr_goods_row_id: row.id,
             rate_type: existing?.rate_type ?? defaultRateType,
             rate: existing?.rate ?? '',
-            custom_enabled: (existing?.custom_amount ?? null) !== null,
-            custom_amount: existing?.custom_amount ?? '',
         };
     });
+}
+
+function initialCustomAmounts(
+    hire: EditableHire | undefined,
+): CustomAmountDraft[] {
+    return (hire?.custom_amounts ?? []).map((row) => ({
+        id: row.id,
+        description: row.description,
+        amount: row.amount,
+    }));
 }
 
 /** Server revision plan → highlighted previous / proposed values for the confirmation. */
@@ -260,18 +278,19 @@ function revisionChanges(
             group,
         );
         push(
-            'Custom Amount',
-            previous?.custom_amount ? formatInr(previous.custom_amount) : 'Off',
-            line.custom_amount ? formatInr(line.custom_amount) : 'Off',
-            group,
-        );
-        push(
-            'Effective Freight',
+            'Transporter Freight',
             money(previous?.freight_amount),
             money(line.freight_amount),
             group,
         );
     }
+
+    push(
+        'Custom Amounts Total',
+        formatInr(plan.before.custom_amounts_total),
+        formatInr(plan.after.custom_amounts_total),
+        'Custom Amounts',
+    );
 
     push(
         'Transporter Freight',
@@ -320,6 +339,7 @@ export default function LorryHireForm({
         remarks: hire?.remarks ?? '',
         edit_remark: '',
         goods_lines: initialLines(goodsRows, defaults.rate_type, hire),
+        custom_amounts: initialCustomAmounts(hire),
     });
     const previewRequest = useHttp<Record<string, never>, RevisionPlan>({});
     const submitting = useRef(false);
@@ -338,15 +358,12 @@ export default function LorryHireForm({
         [goodsRows, form.data.goods_lines],
     );
     const lineFreights = useMemo(
-        () =>
-            calculatedFreights.map((calculated, index) =>
-                effectiveLineFreight(
-                    calculated,
-                    form.data.goods_lines[index].custom_enabled,
-                    form.data.goods_lines[index].custom_amount,
-                ),
-            ),
-        [calculatedFreights, form.data.goods_lines],
+        () => calculatedFreights,
+        [calculatedFreights],
+    );
+    const customTotal = useMemo(
+        () => customAmountsTotal(form.data.custom_amounts),
+        [form.data.custom_amounts],
     );
     const lockedTds =
         isEdit && hire.tds_locked_reason !== null
@@ -358,13 +375,16 @@ export default function LorryHireForm({
                 lineFreights,
                 tdsPreview?.applicable_percent ?? null,
                 lockedTds,
+                customTotal,
             ),
-        [lineFreights, tdsPreview, lockedTds],
+        [lineFreights, tdsPreview, lockedTds, customTotal],
     );
+    const existingCustom = isEdit ? customAmountsTotal(hire.custom_amounts) : 0;
     const adjustmentsNet = isEdit
         ? Number(hire.net_payable) -
           Number(hire.freight_total) +
-          Number(hire.tds_amount)
+          Number(hire.tds_amount) -
+          existingCustom
         : 0;
     const netPayable = financials.netPayable + adjustmentsNet;
 
@@ -389,16 +409,35 @@ export default function LorryHireForm({
     const updateLine = (index: number, patch: Partial<LineDraft>) => {
         form.setData(
             'goods_lines',
-            form.data.goods_lines.map((line, i) => {
-                if (i !== index) {
-                    return line;
-                }
-                const next = { ...line, ...patch };
+            form.data.goods_lines.map((line, i) =>
+                i === index ? { ...line, ...patch } : line,
+            ),
+        );
+    };
 
-                return next.rate_type === FIXED_RATE
-                    ? { ...next, custom_enabled: false, custom_amount: '' }
-                    : next;
-            }),
+    const addCustomAmountRow = () => {
+        form.setData('custom_amounts', [
+            ...form.data.custom_amounts,
+            { description: '', amount: '' },
+        ]);
+    };
+
+    const updateCustomAmount = (
+        index: number,
+        patch: Partial<CustomAmountDraft>,
+    ) => {
+        form.setData(
+            'custom_amounts',
+            form.data.custom_amounts.map((row, i) =>
+                i === index ? { ...row, ...patch } : row,
+            ),
+        );
+    };
+
+    const removeCustomAmount = (index: number) => {
+        form.setData(
+            'custom_amounts',
+            form.data.custom_amounts.filter((_, i) => i !== index),
         );
     };
 
@@ -409,11 +448,17 @@ export default function LorryHireForm({
             lr_goods_row_id: line.lr_goods_row_id,
             rate_type: line.rate_type,
             rate: line.rate,
-            custom_amount:
-                line.custom_enabled && line.custom_amount !== ''
-                    ? line.custom_amount
-                    : null,
         })),
+        custom_amounts: data.custom_amounts
+            .filter(
+                (row) =>
+                    row.description.trim() !== '' && row.amount.trim() !== '',
+            )
+            .map((row) => ({
+                ...(row.id ? { id: row.id } : {}),
+                description: row.description.trim(),
+                amount: row.amount,
+            })),
     });
 
     const createReviewSections = (): FieldReviewSection[] => [
@@ -447,14 +492,7 @@ export default function LorryHireForm({
                     : []),
             ],
             table: {
-                headers: [
-                    'Goods',
-                    'Rate Type',
-                    'Rate',
-                    'Calculated',
-                    'Custom Amount',
-                    'Effective Freight',
-                ],
+                headers: ['Goods', 'Rate Type', 'Rate', 'Transporter Freight'],
                 rows: goodsRows.map((row, index) => {
                     const line = form.data.goods_lines[index];
 
@@ -462,13 +500,25 @@ export default function LorryHireForm({
                         row.label,
                         freightRateTypeLabel(line.rate_type),
                         dash(line.rate),
-                        money(calculatedFreights[index]),
-                        line.custom_enabled ? money(line.custom_amount) : 'Off',
                         money(lineFreights[index]),
                     ];
                 }),
             },
         },
+        ...(form.data.custom_amounts.length > 0
+            ? [
+                  {
+                      title: 'Custom Amounts',
+                      table: {
+                          headers: ['Particulars', 'Amount (+/−)'],
+                          rows: form.data.custom_amounts.map((row) => [
+                              row.description.trim() || '—',
+                              money(row.amount),
+                          ]),
+                      },
+                  },
+              ]
+            : []),
         {
             title: 'Financial summary',
             fields: [
@@ -476,6 +526,14 @@ export default function LorryHireForm({
                     label: 'Transporter Freight',
                     value: formatInr(financials.transporterFreight),
                 },
+                ...(customTotal !== 0
+                    ? [
+                          {
+                              label: 'Custom Amounts',
+                              value: formatInr(customTotal),
+                          },
+                      ]
+                    : []),
                 {
                     label: `Applicable TDS (${tdsPercentLabel})`,
                     value: tdsAmountLabel,
@@ -696,7 +754,7 @@ export default function LorryHireForm({
                         <LrfSection
                             step={2}
                             title="Hire details"
-                            description="Transporter rate per goods line — Custom Amount replaces the calculated freight"
+                            description="Transporter rate and freight per goods line from the linked Bilty"
                             tone="goods"
                         >
                             <div className="grid gap-3 md:grid-cols-3">
@@ -728,14 +786,12 @@ export default function LorryHireForm({
                                     const draft = form.data.goods_lines[index];
                                     const isFixed =
                                         draft.rate_type === FIXED_RATE;
-                                    const calculated =
-                                        calculatedFreights[index];
-                                    const effective = lineFreights[index];
+                                    const freight = lineFreights[index];
 
                                     return (
                                         <div
                                             key={row.id}
-                                            className="grid items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(10.5rem,1.1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,0.8fr)]"
+                                            className="grid items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(10.5rem,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)]"
                                         >
                                             <div className="min-w-0 space-y-0.5">
                                                 <p className="text-xs text-muted-foreground">
@@ -848,98 +904,13 @@ export default function LorryHireForm({
 
                                             <div className="space-y-1">
                                                 <p className="text-xs font-medium text-muted-foreground">
-                                                    Calculated Freight
-                                                </p>
-                                                <p
-                                                    className={`flex h-9 items-center text-sm tabular-nums ${
-                                                        draft.custom_enabled
-                                                            ? 'text-muted-foreground line-through'
-                                                            : 'font-medium'
-                                                    }`}
-                                                    data-testid={`calculated_freight_${index}`}
-                                                >
-                                                    {money(calculated)}
-                                                </p>
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <div className="flex h-4 items-center gap-2">
-                                                    <Checkbox
-                                                        id={`custom_enabled_${index}`}
-                                                        checked={
-                                                            draft.custom_enabled
-                                                        }
-                                                        disabled={isFixed}
-                                                        onCheckedChange={(
-                                                            checked,
-                                                        ) =>
-                                                            updateLine(index, {
-                                                                custom_enabled:
-                                                                    checked ===
-                                                                    true,
-                                                                custom_amount:
-                                                                    checked ===
-                                                                    true
-                                                                        ? draft.custom_amount
-                                                                        : '',
-                                                            })
-                                                        }
-                                                    />
-                                                    <Label
-                                                        htmlFor={`custom_enabled_${index}`}
-                                                        className="text-xs"
-                                                        required={
-                                                            draft.custom_enabled
-                                                        }
-                                                    >
-                                                        Custom Amount
-                                                    </Label>
-                                                </div>
-                                                {draft.custom_enabled ? (
-                                                    <Input
-                                                        id={`custom_amount_${index}`}
-                                                        aria-label="Custom Amount"
-                                                        type="number"
-                                                        min="0.01"
-                                                        step="0.01"
-                                                        className="h-9"
-                                                        value={
-                                                            draft.custom_amount
-                                                        }
-                                                        onChange={(event) =>
-                                                            updateLine(index, {
-                                                                custom_amount:
-                                                                    event.target
-                                                                        .value,
-                                                            })
-                                                        }
-                                                        placeholder="Enter freight (₹)"
-                                                        required
-                                                    />
-                                                ) : (
-                                                    <p className="flex h-9 items-center text-xs text-muted-foreground">
-                                                        {isFixed
-                                                            ? 'Not used with Fixed rate'
-                                                            : 'Off — using calculated freight'}
-                                                    </p>
-                                                )}
-                                                <InputError
-                                                    message={lineError(
-                                                        index,
-                                                        'custom_amount',
-                                                    )}
-                                                />
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <p className="text-xs font-medium text-muted-foreground">
-                                                    Effective Freight
+                                                    Transporter Freight
                                                 </p>
                                                 <p
                                                     className="flex h-9 items-center text-sm font-semibold tabular-nums"
-                                                    data-testid={`effective_freight_${index}`}
+                                                    data-testid={`line_freight_${index}`}
                                                 >
-                                                    {money(effective)}
+                                                    {money(freight)}
                                                 </p>
                                             </div>
                                         </div>
@@ -950,6 +921,119 @@ export default function LorryHireForm({
                                 message={form.errors.goods_lines}
                                 className="mt-2"
                             />
+
+                            <div className="mt-4 space-y-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium">
+                                            Custom Amounts
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Additional payable (+) or
+                                            recoverable (−) adjustments — not
+                                            part of TDS basis
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={addCustomAmountRow}
+                                    >
+                                        Add row
+                                    </Button>
+                                </div>
+                                {form.data.custom_amounts.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">
+                                        No Custom Amount rows — use Add row when
+                                        a surcharge or recovery applies.
+                                    </p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {form.data.custom_amounts.map(
+                                            (row, index) => (
+                                                <div
+                                                    key={`custom-${index}`}
+                                                    className="grid gap-2 rounded-lg border border-border bg-background p-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.6fr)_auto]"
+                                                >
+                                                    <div className="space-y-1">
+                                                        <Label
+                                                            htmlFor={`custom_description_${index}`}
+                                                            className="text-xs"
+                                                            required
+                                                        >
+                                                            Particulars
+                                                        </Label>
+                                                        <Input
+                                                            id={`custom_description_${index}`}
+                                                            value={
+                                                                row.description
+                                                            }
+                                                            onChange={(event) =>
+                                                                updateCustomAmount(
+                                                                    index,
+                                                                    {
+                                                                        description:
+                                                                            event
+                                                                                .target
+                                                                                .value,
+                                                                    },
+                                                                )
+                                                            }
+                                                            maxLength={255}
+                                                            placeholder="e.g. Loading charge"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label
+                                                            htmlFor={`custom_amount_row_${index}`}
+                                                            className="text-xs"
+                                                            required
+                                                        >
+                                                            Amount (+/−)
+                                                        </Label>
+                                                        <Input
+                                                            id={`custom_amount_row_${index}`}
+                                                            type="number"
+                                                            step="0.01"
+                                                            className="h-9"
+                                                            value={row.amount}
+                                                            onChange={(event) =>
+                                                                updateCustomAmount(
+                                                                    index,
+                                                                    {
+                                                                        amount: event
+                                                                            .target
+                                                                            .value,
+                                                                    },
+                                                                )
+                                                            }
+                                                            placeholder="+ / −"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-end">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                removeCustomAmount(
+                                                                    index,
+                                                                )
+                                                            }
+                                                        >
+                                                            Remove
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ),
+                                        )}
+                                    </div>
+                                )}
+                                <InputError
+                                    message={form.errors.custom_amounts}
+                                />
+                            </div>
 
                             <div className="mt-3 space-y-1">
                                 <Label htmlFor="remarks">Remarks</Label>
@@ -1014,6 +1098,14 @@ export default function LorryHireForm({
                                             financials.transporterFreight,
                                         ),
                                     },
+                                    ...(customTotal !== 0
+                                        ? [
+                                              {
+                                                  name: 'Custom Amounts',
+                                                  value: formatInr(customTotal),
+                                              },
+                                          ]
+                                        : []),
                                     {
                                         name: `Applicable TDS (${tdsPercentLabel})`,
                                         value: tdsAmountLabel,

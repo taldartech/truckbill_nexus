@@ -19,6 +19,7 @@ use App\Models\AccountingPostingLink;
 use App\Models\AccountingVoucher;
 use App\Models\CustomerWebSession;
 use App\Models\LorryHire;
+use App\Models\LorryHireCustomAmount;
 use App\Models\LorryHireRevision;
 use App\Models\LorryReceipt;
 use App\Models\PartyRole;
@@ -100,7 +101,7 @@ function editHireCreate(array $ctx, LorryReceipt $lr, array $line = []): LorryHi
  */
 function editHirePayload(LorryHire $hire, array $line = [], array $extra = []): array
 {
-    $hire->loadMissing('goodsLines');
+    $hire->loadMissing(['goodsLines', 'customAmounts']);
     $existing = $hire->goodsLines->firstOrFail();
 
     return array_merge([
@@ -111,8 +112,12 @@ function editHirePayload(LorryHire $hire, array $line = [], array $extra = []): 
             'lr_goods_row_id' => $existing->lr_goods_row_id,
             'rate_type' => $existing->rate_type->value,
             'rate' => $existing->rate,
-            'custom_amount' => $existing->custom_amount,
         ], $line)],
+        'custom_amounts' => $hire->customAmounts->map(fn (LorryHireCustomAmount $row): array => [
+            'id' => $row->id,
+            'description' => $row->description,
+            'amount' => number_format((float) $row->amount, 2, '.', ''),
+        ])->all(),
     ], $extra);
 }
 
@@ -126,32 +131,50 @@ function actAsHireEditor(array $ctx, string $userKey = 'member'): void
     seedBranchSession($ctx['company'], $ctx['branch']);
 }
 
-test('custom amount becomes the effective freight while rate type and rate are preserved', function () {
+test('positive custom amount increases net payable without changing freight or TDS basis', function () {
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
-    $hire = editHireCreate($ctx, editHireLr($ctx), ['custom_amount' => '9500']);
+    $lr = editHireLr($ctx);
+    $hire = app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
+        'hire_date' => now()->toDateString(),
+        'goods_lines' => [[
+            'lr_goods_row_id' => $lr->goodsRows()->firstOrFail()->id,
+            'rate_type' => FreightRateType::PerChargedWeight->value,
+            'rate' => '1000',
+        ]],
+        'custom_amounts' => [[
+            'description' => 'Loading surcharge',
+            'amount' => '500',
+        ]],
+    ]);
 
     $line = $hire->goodsLines->firstOrFail();
+    $summary = app(LorryHireCalculationService::class)->summarize($hire->fresh(['customAmounts', 'adjustments', 'vouchers', 'bookBalanceEntries']));
 
-    expect($hire->freight_total)->toBe('9500.00')
-        ->and($hire->tds_amount)->toBe('190.00')
-        ->and($hire->outstanding_amount)->toBe('9310.00')
-        ->and($line->rate_type)->toBe(FreightRateType::PerChargedWeight)
-        ->and($line->rate)->toBe('1000.0000')
-        ->and($line->custom_amount)->toBe('9500.00')
-        ->and($line->freight_amount)->toBe('9500.00')
-        ->and(app(LorryHireCalculationService::class)->calculatedLineFreight($line))->toBe('10000.00')
-        ->and($hire->tdsSnapshot?->freight_basis)->toBe('9500.00');
+    expect($hire->freight_total)->toBe('10000.00')
+        ->and($hire->tds_amount)->toBe('200.00')
+        ->and($summary['net_payable'])->toBe('10300.00')
+        ->and($line->freight_amount)->toBe('10000.00')
+        ->and($hire->customAmounts)->toHaveCount(1)
+        ->and($hire->tdsSnapshot?->freight_basis)->toBe('10000.00');
 });
 
-test('custom amount is not accepted with the fixed rate type', function () {
+test('signed custom amount rows cannot be zero', function () {
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
+    $lr = editHireLr($ctx);
 
-    expect(fn () => editHireCreate($ctx, editHireLr($ctx), [
-        'rate_type' => FreightRateType::FixedAmount->value,
-        'rate' => '9000',
-        'custom_amount' => '9500',
+    expect(fn () => app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
+        'hire_date' => now()->toDateString(),
+        'goods_lines' => [[
+            'lr_goods_row_id' => $lr->goodsRows()->firstOrFail()->id,
+            'rate_type' => FreightRateType::FixedAmount->value,
+            'rate' => '9000',
+        ]],
+        'custom_amounts' => [[
+            'description' => 'Invalid',
+            'amount' => '0',
+        ]],
     ]))->toThrow(ValidationException::class);
 });
 
@@ -172,18 +195,32 @@ test('editing rate and custom amount recalculates freight, tds and payable with 
         ->and($hire->outstanding_amount)->toBe('10780.00')
         ->and($hire->tdsSnapshot?->fresh()?->freight_basis)->toBe('11000.00');
 
-    $service->revise($hire, $ctx['member'], editHirePayload($hire, ['custom_amount' => '10500']));
-    $hire->refresh();
-
-    expect($hire->freight_total)->toBe('10500.00')
-        ->and($hire->tds_amount)->toBe('210.00')
-        ->and($hire->goodsLines()->firstOrFail()->rate)->toBe('1100.0000');
-
-    $service->revise($hire, $ctx['member'], editHirePayload($hire, ['custom_amount' => null]));
+    $service->revise($hire, $ctx['member'], editHirePayload($hire, [], [
+        'custom_amounts' => [[
+            'description' => 'Detention agreed',
+            'amount' => '800',
+        ]],
+    ]));
     $hire->refresh();
 
     expect($hire->freight_total)->toBe('11000.00')
-        ->and($hire->goodsLines()->firstOrFail()->custom_amount)->toBeNull();
+        ->and($hire->tds_amount)->toBe('220.00')
+        ->and(app(LorryHireCalculationService::class)->summarize($hire->fresh(['customAmounts', 'adjustments', 'vouchers', 'bookBalanceEntries']))['net_payable'])
+        ->toBe('11580.00');
+
+    $customRow = $hire->fresh(['customAmounts'])->customAmounts->firstOrFail();
+    $service->revise($hire, $ctx['member'], editHirePayload($hire, [], [
+        'custom_amounts' => [[
+            'id' => $customRow->id,
+            'description' => 'Detention agreed',
+            'amount' => '500',
+        ]],
+    ]));
+    $hire->refresh();
+
+    expect($hire->freight_total)->toBe('11000.00')
+        ->and($hire->customAmounts)->toHaveCount(1)
+        ->and($hire->customAmounts->firstOrFail()->amount)->toBe('500.00');
 
     $revisions = LorryHireRevision::query()->where('lorry_hire_id', $hire->id)->get();
     $rateRevision = $revisions->first(fn (LorryHireRevision $revision): bool => $revision->before['freight_total'] === '10000.00');
@@ -237,8 +274,9 @@ test('after partial payment edits may raise the payable but not cut it below wha
     $vouchers->transitionStatus($voucher, $ctx['member'], VoucherStatus::Paid);
     $service = app(LorryHireRevisionService::class);
 
-    expect(fn () => $service->revise($hire->fresh(), $ctx['member'], editHirePayload($hire, ['custom_amount' => '7000'])))
-        ->toThrow(ValidationException::class, 'below the amount already paid');
+    expect(fn () => $service->revise($hire->fresh(), $ctx['member'], editHirePayload($hire, [], [
+        'custom_amounts' => [['description' => 'Recovery', 'amount' => '-4000']],
+    ])))->toThrow(ValidationException::class, 'below the amount already paid');
 
     $service->revise($hire->fresh(), $ctx['member'], editHirePayload($hire, ['rate' => '1050']));
     $hire->refresh();
@@ -322,19 +360,25 @@ test('edit screen, preview and update work over http and the register and detail
             ->component('broker/lorry-hires/edit')
             ->where('hire.hire_number', $hire->hire_number)
             ->where('hire.goods_lines.0.rate', '1000')
-            ->where('hire.goods_lines.0.custom_amount', null)
+            ->has('hire.custom_amounts', 0)
             ->where('payee.id', $hire->transporter_party_id)
             ->has('goodsRows', 1));
 
-    $payload = editHirePayload($hire, ['custom_amount' => '10400']);
+    $payload = editHirePayload($hire, [], [
+        'custom_amounts' => [[
+            'description' => 'Extra payable',
+            'amount' => '400',
+        ]],
+    ]);
 
     actAsHireEditor($ctx);
     $this->postJson(route('branch.broker.lorry-hires.revision-preview', [$hire]), $payload)
         ->assertOk()
         ->assertJsonPath('changed', true)
         ->assertJsonPath('before.freight_total', '10000.00')
-        ->assertJsonPath('after.freight_total', '10400.00')
-        ->assertJsonPath('after.tds_amount', '208.00');
+        ->assertJsonPath('after.freight_total', '10000.00')
+        ->assertJsonPath('after.custom_amounts_total', '400.00')
+        ->assertJsonPath('after.tds_amount', '200.00');
 
     actAsHireEditor($ctx);
     $this->put(route('branch.broker.lorry-hires.update', [$hire]), array_merge($payload, ['edit_remark' => '']))
@@ -350,8 +394,8 @@ test('edit screen, preview and update work over http and the register and detail
         ->assertInertia(fn (Assert $page) => $page
             ->where('permissions.can_edit', true)
             ->where('urls.edit', route('branch.broker.lorry-hires.edit', [$hire], absolute: false))
-            ->where('lorryHire.goods_lines.0.custom_amount', '10400.00')
-            ->where('lorryHire.goods_lines.0.calculated_freight_amount', '10000.00')
+            ->where('lorryHire.custom_amounts.0.amount', '400.00')
+            ->where('lorryHire.goods_lines.0.freight_amount', '10000.00')
             ->where('revisions.0.remark', 'Transporter rate renegotiated'));
 
     actAsHireEditor($ctx);

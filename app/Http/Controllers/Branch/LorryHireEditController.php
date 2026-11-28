@@ -41,7 +41,7 @@ class LorryHireEditController extends Controller
     public function edit(Request $request, LorryHire $lorryHire, Company $company, Branch $branch): Response
     {
         $this->authorizeEdit($request, $lorryHire, $company, $branch);
-        $lorryHire->load(['lorryReceipt', 'transporter', 'tdsSnapshot', 'goodsLines.lrGoodsRow']);
+        $lorryHire->load(['lorryReceipt', 'transporter', 'tdsSnapshot', 'goodsLines.lrGoodsRow', 'customAmounts']);
         $lorryReceipt = $lorryHire->lorryReceipt ?? abort(404);
 
         $summary = $this->calculations->summarize($lorryHire);
@@ -76,9 +76,12 @@ class LorryHireEditController extends Controller
                     'lr_goods_row_id' => $line->lr_goods_row_id,
                     'rate_type' => $line->rate_type->value,
                     'rate' => $this->plainDecimal($line->rate),
-                    'custom_amount' => $line->custom_amount !== null ? $this->plainDecimal($line->custom_amount) : null,
-                    'calculated_freight_amount' => $this->calculations->calculatedLineFreight($line),
                     'freight_amount' => number_format((float) $line->freight_amount, 2, '.', ''),
+                ])->values()->all(),
+                'custom_amounts' => $lorryHire->customAmounts->map(fn ($row): array => [
+                    'id' => $row->id,
+                    'description' => $row->description,
+                    'amount' => number_format((float) $row->amount, 2, '.', ''),
                 ])->values()->all(),
                 'freight_total' => $summary['freight_total'],
                 'tds_amount' => $summary['tds_amount'],

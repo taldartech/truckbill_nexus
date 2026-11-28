@@ -33,13 +33,19 @@ use Illuminate\Validation\ValidationException;
  *     lr_goods_row_id: string,
  *     rate_type: string,
  *     rate: numeric-string,
- *     custom_amount: numeric-string|null,
  *     freight_amount: numeric-string
+ * }
+ * @phpstan-type RevisionCustomAmount array{
+ *     id: string|null,
+ *     description: string,
+ *     amount: numeric-string
  * }
  * @phpstan-type RevisionSide array{
  *     hire_date: string|null,
  *     remarks: string|null,
  *     lines: list<RevisionLine>,
+ *     custom_amounts: list<RevisionCustomAmount>,
+ *     custom_amounts_total: numeric-string,
  *     freight_total: numeric-string,
  *     tds_amount: numeric-string,
  *     net_payable: numeric-string,
@@ -67,6 +73,7 @@ final class LorryHireRevisionService
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
         private readonly LorryHireCalculationService $calculations = new LorryHireCalculationService,
         private readonly LorryHireGoodsLineBuilder $goodsLines = new LorryHireGoodsLineBuilder,
+        private readonly LorryHireCustomAmountService $customAmounts = new LorryHireCustomAmountService,
         private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
@@ -134,7 +141,6 @@ final class LorryHireRevisionService
                     'rate_semantics' => $builtLine['rate_semantics']->value,
                     'rate' => $builtLine['rate'],
                     'is_fixed_amount' => $builtLine['is_fixed_amount'],
-                    'custom_amount' => $builtLine['custom_amount'],
                     'freight_amount' => $revised['freight_amount'],
                     'loading_weight' => $builtLine['loading_weight'],
                 ])->save();
@@ -148,11 +154,31 @@ final class LorryHireRevisionService
                 ])->save();
             }
 
+            $customTotalAfter = $this->customAmounts->sync(
+                $locked,
+                $this->customAmountsInput($payload),
+            );
+
+            $after['custom_amounts_total'] = $customTotalAfter;
+            $after['custom_amounts'] = $this->customAmountRows($locked);
+
             $locked->forceFill([
                 'hire_date' => $after['hire_date'],
                 'remarks' => $after['remarks'],
                 'freight_total' => $after['freight_total'],
                 'tds_amount' => $after['tds_amount'],
+            ])->save();
+
+            $summaryAfter = $this->calculations->summarize($locked->fresh([
+                'customAmounts',
+                'adjustments',
+                'vouchers',
+                'bookBalanceEntries',
+            ]));
+            $after['net_payable'] = $summaryAfter['net_payable'];
+            $after['outstanding_amount'] = $summaryAfter['outstanding_amount'];
+
+            $locked->forceFill([
                 'outstanding_amount' => $after['outstanding_amount'],
             ])->save();
 
@@ -169,6 +195,12 @@ final class LorryHireRevisionService
             ]);
 
             $this->accounting->postLorryHireRevised($revision, $locked, $actor);
+            $this->accounting->postLorryHireCustomAmountsRevised(
+                $plan['before']['custom_amounts_total'],
+                $after['custom_amounts_total'],
+                $locked,
+                $actor,
+            );
 
             $this->audit->write(
                 AuditAction::Updated,
@@ -220,8 +252,6 @@ final class LorryHireRevisionService
      *     rate_type: FreightRateType,
      *     rate: numeric-string,
      *     is_fixed_amount: bool,
-     *     calculated_freight_amount: numeric-string,
-     *     custom_amount: numeric-string|null,
      *     freight_amount: numeric-string,
      *     loading_weight: numeric-string,
      *     rate_semantics: FreightRateSemantics
@@ -229,7 +259,7 @@ final class LorryHireRevisionService
      */
     private function plan(LorryHire $hire, Company $company, array $payload): array
     {
-        $hire->load(['lorryReceipt.goodsRows', 'goodsLines.lrGoodsRow', 'adjustments', 'vouchers', 'bookBalanceEntries']);
+        $hire->load(['lorryReceipt.goodsRows', 'goodsLines.lrGoodsRow', 'adjustments', 'vouchers', 'bookBalanceEntries', 'customAmounts']);
         $lorryReceipt = $hire->lorryReceipt ?? throw new BrokerDomainException('Lorry Hire Bilty is unavailable.');
 
         $summary = $this->calculations->summarize($hire);
@@ -237,7 +267,7 @@ final class LorryHireRevisionService
         $this->assertSameGoodsRows($hire, $input);
 
         $built = $this->goodsLines->build($lorryReceipt, $input);
-        // TDS basis stays on loading-weight freight (Custom Amount / Fixed lines at their entered amount).
+        // TDS basis stays on loading-weight transporter freight (Fixed lines at entered amount).
         $tdsBasis = $this->goodsLines->freightTotal($built);
 
         $unloading = $this->calculations->latestUnloadingWeight($hire);
@@ -258,7 +288,6 @@ final class LorryHireRevisionService
                 'lr_goods_row_id' => $line['lr_goods_row_id'],
                 'rate_type' => $line['rate_type']->value,
                 'rate' => $line['rate'],
-                'custom_amount' => $line['custom_amount'],
                 'freight_amount' => $freight,
             ];
         }
@@ -273,7 +302,8 @@ final class LorryHireRevisionService
             ? $this->calculations->tdsAmountFromFreight($tdsBasis, $this->money($hire->tds_percent, 3))
             : $summary['tds_amount'];
 
-        $netAfter = $this->calculations->netPayable($freightAfter, $tdsAfter, $hire->adjustments);
+        $customTotalAfter = $this->previewCustomAmountsTotal($hire, $payload);
+        $netAfter = $this->calculations->netPayable($freightAfter, $tdsAfter, $customTotalAfter, $hire->adjustments);
         $outstandingAfter = $this->calculations->outstandingAmount($netAfter, $hire->vouchers, $hire->bookBalanceEntries);
         $settled = bcsub($summary['net_payable'], $summary['outstanding_amount'], 2);
 
@@ -292,9 +322,10 @@ final class LorryHireRevisionService
                 'lr_goods_row_id' => (string) $line->lr_goods_row_id,
                 'rate_type' => $line->rate_type->value,
                 'rate' => $this->money($line->rate, 4),
-                'custom_amount' => $line->custom_amount !== null ? $this->money($line->custom_amount) : null,
                 'freight_amount' => $this->money($line->freight_amount),
             ], array_values($hire->goodsLines->all())),
+            'custom_amounts' => $this->customAmountRows($hire),
+            'custom_amounts_total' => $this->calculations->customAmountsTotal($hire->customAmounts),
             'freight_total' => $summary['freight_total'],
             'tds_amount' => $summary['tds_amount'],
             'net_payable' => $summary['net_payable'],
@@ -310,6 +341,8 @@ final class LorryHireRevisionService
             'hire_date' => $hireDate,
             'remarks' => $remarks,
             'lines' => $afterLines,
+            'custom_amounts' => $this->previewCustomAmountRows($hire, $payload),
+            'custom_amounts_total' => $customTotalAfter,
             'freight_total' => $freightAfter,
             'tds_amount' => $tdsAfter,
             'net_payable' => $netAfter,
@@ -345,9 +378,17 @@ final class LorryHireRevisionService
             if ($previous === null
                 || $previous['rate_type'] !== $line['rate_type']
                 || bccomp($previous['rate'], $line['rate'], 4) !== 0
-                || $previous['custom_amount'] !== $line['custom_amount']) {
+                || bccomp($previous['freight_amount'], $line['freight_amount'], 2) !== 0) {
                 return true;
             }
+        }
+
+        if (bccomp($before['custom_amounts_total'], $after['custom_amounts_total'], 2) !== 0) {
+            return true;
+        }
+
+        if (json_encode($before['custom_amounts']) !== json_encode($after['custom_amounts'])) {
+            return true;
         }
 
         return false;
@@ -377,6 +418,83 @@ final class LorryHireRevisionService
         $lines = $payload['goods_lines'] ?? [];
 
         return is_array($lines) ? array_values(array_filter($lines, 'is_array')) : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return list<array<string, mixed>>
+     */
+    private function customAmountsInput(array $payload): array
+    {
+        $rows = $payload['custom_amounts'] ?? [];
+
+        return is_array($rows) ? array_values(array_filter($rows, 'is_array')) : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return numeric-string
+     */
+    private function previewCustomAmountsTotal(LorryHire $hire, array $payload): string
+    {
+        $total = '0.00';
+        foreach ($this->customAmountsInput($payload) as $row) {
+            if (! is_numeric($row['amount'] ?? null)) {
+                continue;
+            }
+            $total = bcadd($total, $this->money($row['amount']), 2);
+        }
+
+        if ($this->customAmountsInput($payload) === []) {
+            return $this->calculations->customAmountsTotal($hire->customAmounts);
+        }
+
+        return $total;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return list<RevisionCustomAmount>
+     */
+    private function previewCustomAmountRows(LorryHire $hire, array $payload): array
+    {
+        $input = $this->customAmountsInput($payload);
+        if ($input === []) {
+            return $this->customAmountRows($hire);
+        }
+
+        $rows = [];
+        foreach ($input as $row) {
+            if (! is_numeric($row['amount'] ?? null)) {
+                continue;
+            }
+            $rows[] = [
+                'id' => filled($row['id'] ?? null) ? (string) $row['id'] : null,
+                'description' => trim((string) ($row['description'] ?? '')),
+                'amount' => $this->money($row['amount']),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return list<RevisionCustomAmount>
+     */
+    private function customAmountRows(LorryHire $hire): array
+    {
+        $rows = [];
+        foreach ($hire->customAmounts as $row) {
+            /** @var numeric-string $amount */
+            $amount = $this->money($row->amount);
+            $rows[] = [
+                'id' => $row->id,
+                'description' => $row->description,
+                'amount' => $amount,
+            ];
+        }
+
+        return $rows;
     }
 
     /**

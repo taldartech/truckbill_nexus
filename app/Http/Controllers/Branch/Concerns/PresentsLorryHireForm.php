@@ -87,7 +87,10 @@ trait PresentsLorryHireForm
                 Rule::in(FreightRateTypeCatalog::selectableValues()),
             ],
             'goods_lines.*.rate' => ['required', 'numeric', 'min:0'],
-            'goods_lines.*.custom_amount' => ['nullable', 'numeric', 'gt:0', 'max:99999999.99'],
+            'custom_amounts' => ['nullable', 'array'],
+            'custom_amounts.*.id' => ['nullable', 'uuid'],
+            'custom_amounts.*.description' => ['required_with:custom_amounts.*.amount', 'string', 'max:255'],
+            'custom_amounts.*.amount' => ['required_with:custom_amounts.*.description', 'numeric', 'not_in:0', 'max:99999999.99', 'min:-99999999.99'],
         ];
     }
 

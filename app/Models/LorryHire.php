@@ -28,6 +28,7 @@ use Illuminate\Support\Str;
  * @property-read Collection<int, TransporterBookBalanceEntry> $bookBalanceEntries
  * @property-read LorryHireTdsSnapshot|null $tdsSnapshot
  * @property-read Collection<int, LorryHireRevision> $revisions
+ * @property-read Collection<int, LorryHireCustomAmount> $customAmounts
  * @property-read LorryReceipt|null $lorryReceipt
  * @property-read Vehicle|null $vehicle
  * @property-read Party|null $transporter
@@ -141,5 +142,11 @@ class LorryHire extends Model
     public function revisions(): HasMany
     {
         return $this->hasMany(LorryHireRevision::class);
+    }
+
+    /** @return HasMany<LorryHireCustomAmount, $this> */
+    public function customAmounts(): HasMany
+    {
+        return $this->hasMany(LorryHireCustomAmount::class);
     }
 }
